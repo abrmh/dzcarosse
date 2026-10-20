@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "clean-css": "^5.3.3",
     "compression": "^1.8.2",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
@@ -23,12 +24,9 @@
     "express-session": "^1.18.0",
     "helmet": "^8.3.0",
     "hpp": "^0.2.3",
+    "javascript-obfuscator": "^4.1.1",
     "multer": "^2.0.0",
     "mysql2": "^3.11.0",
     "session-file-store": "^1.5.0"
-  },
-  "devDependencies": {
-    "javascript-obfuscator": "^4.1.1",
-    "clean-css": "^5.3.3"
   }
 }

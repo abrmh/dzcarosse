@@ -2,11 +2,27 @@
 // frontend-src/ (code lisible, PRIVÉ)  ->  public/ (code obfusqué, servi aux navigateurs)
 const fs = require('fs');
 const path = require('path');
-const JavaScriptObfuscator = require('javascript-obfuscator');
-const CleanCSS = require('clean-css');
 
 const SRC = path.join(__dirname, '..', 'frontend-src');
 const OUT = path.join(__dirname, '..', 'public');
+
+// Si les outils de protection ne sont pas installés (hébergeur qui n'installe pas
+// tout, mémoire insuffisante...), on ne fait PAS échouer le déploiement : le code
+// lisible de frontend-src/ est simplement copié tel quel dans public/.
+let JavaScriptObfuscator, CleanCSS;
+try {
+  JavaScriptObfuscator = require('javascript-obfuscator');
+  CleanCSS = require('clean-css');
+} catch (e) {
+  console.warn('[build] javascript-obfuscator / clean-css introuvables : copie sans obfuscation (' + e.message.split('\n')[0] + ')');
+  for (const f of fs.readdirSync(path.join(SRC, 'js')).filter(x => x.endsWith('.js'))) {
+    fs.copyFileSync(path.join(SRC, 'js', f), path.join(OUT, 'js', f));
+    console.log('JS  ', f, '(copie)');
+  }
+  fs.copyFileSync(path.join(SRC, 'css', 'style.css'), path.join(OUT, 'css', 'style.css'));
+  console.log('CSS style.css (copie)');
+  process.exit(0);
+}
 
 // Ordre : guard.js d'abord. Les fichiers restent séparés (CSP + service worker).
 const files = fs.readdirSync(path.join(SRC, 'js')).filter(f => f.endsWith('.js'));
