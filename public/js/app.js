@@ -355,6 +355,30 @@ function photoField(existingUrl) {
   </div>`;
 }
 
+// Trois emplacements photo pour un véhicule : extérieur, intérieur, côté.
+const CAR_PHOTO_SLOTS = [
+  { field: 'photo', key: 'photo.exterior' },
+  { field: 'photo_interior', key: 'photo.interior' },
+  { field: 'photo_side', key: 'photo.side' }
+];
+function carPhotosField(photos) {
+  const cur = photos || ['', '', ''];
+  return `
+  <div class="field">
+    <label>${t('photo.carLabel')}</label>
+    <div class="hint" style="margin-bottom:8px">${t('photo.carHint')}</div>
+    <div class="car-photo-slots">
+      ${CAR_PHOTO_SLOTS.map((s, i) => `
+      <div class="car-photo-slot">
+        <div class="car-photo-slot-title">${t(s.key)}</div>
+        <img class="photo-preview car-photo-preview" id="preview_${s.field}" src="${cur[i] ? esc(cur[i]) : 'https://placehold.co/160x120/E2E4EA/66707D?text=' + encodeURIComponent(t(s.key))}" data-fallback="${esc(t(s.key))}">
+        <input type="file" name="${s.field}" accept="image/*" data-preview="preview_${s.field}">
+        ${cur[i] ? `<label class="car-photo-remove"><input type="checkbox" name="remove_${s.field}" value="1"> ${t('photo.remove')}</label>` : ''}
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function renderDealerStockForm() {
   const c = editingCar;
   return `
@@ -379,7 +403,7 @@ function renderDealerStockForm() {
         <div class="field"><label>${t('field.gearbox')}</label><select name="gearbox">${GEARBOX.map(f => `<option ${c && c.gearbox === f ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
       </div>
       <div class="field"><label>${t('field.city')}</label><input name="city" required value="${esc(c ? c.city : (session.city || ''))}"></div>
-      ${photoField(c ? c.photo : '')}
+      ${carPhotosField(c ? c.photos : null)}
       <div class="field"><label>${t('field.description')}</label><textarea name="description" rows="3">${esc(c ? c.description : '')}</textarea></div>
       <div class="field-row">
         <div class="field"><label>${t('field.contactName')}</label><input name="contactName" value="${esc(c ? c.contactName : session.name)}"></div>
@@ -823,7 +847,7 @@ function renderStoragePanel() {
       <td>${p.type === 'car' ? t('storage.typeVehicle') : t('storage.typePrivateListing')}</td>
       <td>${fmtBytes(p.sizeBytes)}</td>
       <td style="display:flex;gap:6px">
-        <button class="btn-secondary" data-action="delete-photo" data-type="${p.type}" data-id="${p.id}">${t('storage.removePhoto')}</button>
+        <button class="btn-secondary" data-action="delete-photo" data-type="${p.type}" data-id="${p.id}" data-slot="${p.slot || 0}">${t('storage.removePhoto')}</button>
         <button class="btn-danger" data-action="delete-listing" data-type="${p.type}" data-id="${p.id}">${t('storage.deleteListing')}</button>
       </td>
     </tr>`).join('');
@@ -847,6 +871,29 @@ function renderStoragePanel() {
   `;
 }
 
+// Galerie de la fiche véhicule : grande photo + miniatures (extérieur, intérieur, côté).
+function carGallery(c) {
+  const slots = (c.photos && c.photos.length ? c.photos : [c.photo || '', '', '']);
+  const items = CAR_PHOTO_SLOTS.map((s, i) => ({ url: slots[i], label: t(s.key) })).filter(x => x.url);
+  const alt = esc(c.brand + ' ' + c.model);
+  if (!items.length) {
+    return `<img class="gallery-main" style="height:320px;object-fit:cover;width:100%" src="${esc(c.photo || '')}" data-fallback="${alt}">`;
+  }
+  const thumbs = items.length > 1 ? `
+    <div class="gallery-thumbs">
+      ${items.map((x, i) => `
+      <button type="button" class="gallery-thumb ${i === 0 ? 'active' : ''}" data-action="gallery-pick" data-src="${esc(x.url)}" aria-label="${esc(x.label)}">
+        <img src="${esc(x.url)}" alt="${esc(x.label)}" data-fallback="${esc(x.label)}">
+        <span>${esc(x.label)}</span>
+      </button>`).join('')}
+    </div>` : '';
+  return `
+  <div class="gallery">
+    <img id="galleryMain" class="gallery-main" src="${esc(items[0].url)}" alt="${alt}" data-fallback="${alt}">
+    ${thumbs}
+  </div>`;
+}
+
 function renderModal() {
   if (!modalData) return '';
   if (modalData.type === 'car') {
@@ -854,7 +901,7 @@ function renderModal() {
     return `
     <div class="overlay" data-action="close-modal">
       <div class="modal" onclick="event.stopPropagation()">
-        <img style="height:320px;object-fit:cover;width:100%" src="${esc(c.photo)}" data-fallback="${esc(c.brand + ' ' + c.model)}">
+        ${carGallery(c)}
         <div class="modal-body">
           <button class="modal-close" data-action="close-modal">×</button>
           <div class="modal-top">
@@ -932,6 +979,13 @@ function render() {
       if (f) document.getElementById('photoPreview').src = URL.createObjectURL(f);
     });
   }
+  document.querySelectorAll('input[type=file][data-preview]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const f = inp.files[0];
+      const img = document.getElementById(inp.dataset.preview);
+      if (f && img) img.src = URL.createObjectURL(f);
+    });
+  });
 }
 
 /* =========================================================
@@ -1042,6 +1096,11 @@ document.addEventListener('click', async (e) => {
   }
   else if (action === 'auth-tab') { authTab = t2.dataset.tab; formMsg.login = ''; formMsg.register = ''; render(); }
   else if (action === 'apply-filters') { await applyFilters(); }
+  else if (action === 'gallery-pick') {
+    const main = document.getElementById('galleryMain');
+    if (main) { main.dataset.fallbackApplied = ''; main.src = t2.dataset.src; }
+    document.querySelectorAll('.gallery-thumb').forEach(b => b.classList.toggle('active', b === t2));
+  }
   else if (action === 'open-car') {
     modalData = { type: 'car', data: carsCache.find(c => String(c.id) === t2.dataset.id) };
     render();
@@ -1050,7 +1109,11 @@ document.addEventListener('click', async (e) => {
     modalData = { type: 'request', data: requestsCache.find(r => String(r.id) === t2.dataset.id) };
     render();
   }
-  else if (action === 'close-modal') { modalData = null; render(); }
+  else if (action === 'close-modal') {
+    // Un clic à l'intérieur de la fiche (photos, texte) ne doit pas la fermer : seulement le fond ou la croix.
+    if (t2.classList.contains('overlay') && e.target.closest('.modal')) return;
+    modalData = null; render();
+  }
   else if (action === 'edit-car') {
     editingCar = carsCache.find(c => String(c.id) === t2.dataset.id);
     render();
@@ -1108,7 +1171,7 @@ document.addEventListener('click', async (e) => {
   else if (action === 'delete-photo') {
     if (confirm(t('confirm.deletePhoto'))) {
       try {
-        await api(`/api/admin/${t2.dataset.type === 'car' ? 'cars' : 'requests'}/${t2.dataset.id}/photo`, { method: 'DELETE' });
+        await api(`/api/admin/${t2.dataset.type === 'car' ? 'cars' : 'requests'}/${t2.dataset.id}/photo${t2.dataset.type === 'car' ? '?slot=' + (t2.dataset.slot || 0) : ''}`, { method: 'DELETE' });
         await loadAdmin(); render();
       } catch (err) { alert(err.message); }
     }

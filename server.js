@@ -62,7 +62,7 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'https://images.unsplash.com', 'https://placehold.co'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com', 'https://placehold.co'],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'none'"],

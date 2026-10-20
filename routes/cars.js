@@ -1,7 +1,7 @@
 const express = require('express');
 const store = require('../lib/store');
 const { requireAuth } = require('../middleware/auth');
-const { upload, deletePhotoFile } = require('../lib/upload');
+const { carUpload, deletePhotoFile, CAR_PHOTO_FIELDS, carPhotoSlots, setCarPhotos, deleteCarPhotos, uploadedCarFiles, discardUploaded } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
 const analytics = require('../lib/analytics');
 const { dealerWilaya, isValidWilaya } = require('../lib/wilayas');
@@ -17,7 +17,8 @@ function withDealer(db, car, lang) {
     ...car,
     dealerName: dealer ? dealer.name : translate(lang, 'car.defaultDealerName'),
     dealerCity: dealer ? dealer.city : car.city,
-    dealerWilaya: dealerWilaya(dealer)
+    dealerWilaya: dealerWilaya(dealer),
+    photos: carPhotoSlots(car)
   };
 }
 
@@ -102,12 +103,13 @@ router.get('/:id', (req, res) => {
 });
 
 // Publication — réservée aux comptes concessionnaire connectés.
-router.post('/', requireAuth('dealer'), upload.single('photo'), (req, res) => {
+router.post('/', requireAuth('dealer'), carUpload, (req, res) => {
   const db = store.load();
   const dealer = db.users.find(u => u.id === req.session.userId);
   const { brand, model, year, km, price, fuel, gearbox, color, city, description, contactPhone, contactName } = req.body;
 
   if (!brand || !model || !year || !km || !price || !city) {
+    discardUploaded(req);
     return res.status(400).json({ error: translate(req.lang, 'car.requiredFields') });
   }
 
@@ -124,22 +126,24 @@ router.post('/', requireAuth('dealer'), upload.single('photo'), (req, res) => {
     color: (color || '').trim(),
     city: city.trim(),
     description: (description || '').trim(),
-    photo: req.file ? `/uploads/${req.file.filename}` : '',
+    photo: '',
     contactName: (contactName || dealer.name).trim(),
     contactPhone: (contactPhone || dealer.phone).trim(),
     createdAt: Date.now()
   };
+  setCarPhotos(car, uploadedCarFiles(req).map(f => (f ? `/uploads/${f.filename}` : '')));
   db.cars.push(car);
   store.persist();
   res.status(201).json({ car: withDealer(db, car, req.lang) });
 });
 
 // Modification — le concessionnaire ne peut modifier que ses propres véhicules.
-router.put('/:id', requireAuth('dealer'), upload.single('photo'), (req, res) => {
+router.put('/:id', requireAuth('dealer'), carUpload, (req, res) => {
   const db = store.load();
   const car = db.cars.find(c => c.id === Number(req.params.id));
-  if (!car) return res.status(404).json({ error: translate(req.lang, 'car.notFound') });
+  if (!car) { discardUploaded(req); return res.status(404).json({ error: translate(req.lang, 'car.notFound') }); }
   if (car.dealerId !== req.session.userId) {
+    discardUploaded(req);
     return res.status(403).json({ error: translate(req.lang, 'car.otherDealer') });
   }
 
@@ -158,10 +162,20 @@ router.put('/:id', requireAuth('dealer'), upload.single('photo'), (req, res) => 
     contactName: contactName?.trim() ?? car.contactName,
     contactPhone: contactPhone?.trim() ?? car.contactPhone
   });
-  if (req.file) {
-    deletePhotoFile(car.photo);
-    car.photo = `/uploads/${req.file.filename}`;
-  }
+  // Photos : une nouvelle photo remplace l'ancienne de son emplacement ;
+  // « remove_<champ> = 1 » supprime la photo de cet emplacement.
+  const slots = carPhotoSlots(car);
+  const files = uploadedCarFiles(req);
+  CAR_PHOTO_FIELDS.forEach((field, i) => {
+    if (files[i]) {
+      deletePhotoFile(slots[i]);
+      slots[i] = `/uploads/${files[i].filename}`;
+    } else if (req.body['remove_' + field] === '1') {
+      deletePhotoFile(slots[i]);
+      slots[i] = '';
+    }
+  });
+  setCarPhotos(car, slots);
 
   store.persist();
   res.json({ car: withDealer(db, car, req.lang) });
@@ -174,7 +188,7 @@ router.delete('/:id', requireAuth('dealer'), (req, res) => {
   if (car.dealerId !== req.session.userId) {
     return res.status(403).json({ error: translate(req.lang, 'car.otherDealer') });
   }
-  deletePhotoFile(car.photo);
+  deleteCarPhotos(car);
   db.cars = db.cars.filter(c => c.id !== car.id);
   store.persist();
   res.json({ ok: true });

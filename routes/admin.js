@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('../lib/store');
 const { requireAuth, publicUser } = require('../middleware/auth');
-const { UPLOAD_DIR, deletePhotoFile } = require('../lib/upload');
+const { UPLOAD_DIR, deletePhotoFile, deleteCarPhotos, carPhotoSlots, setCarPhotos } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
 
 const router = express.Router();
@@ -126,7 +126,7 @@ router.delete('/accounts/:id', (req, res) => {
 
   db.users = db.users.filter(u => u.id !== id);
   if (acc.role === 'dealer') {
-    db.cars.filter(c => c.dealerId === id).forEach(c => deletePhotoFile(c.photo));
+    db.cars.filter(c => c.dealerId === id).forEach(c => deleteCarPhotos(c));
     db.cars = db.cars.filter(c => c.dealerId !== id);
   }
   if (acc.role === 'user') {
@@ -182,9 +182,14 @@ router.get('/storage', (req, res) => {
   const dealerName = (id) => (db.users.find(u => u.id === id) || {}).name || translate(req.lang, 'car.defaultDealerName');
   const ownerName = (id) => (db.users.find(u => u.id === id) || {}).name || translate(req.lang, 'request.defaultOwnerName');
 
-  const carPhotos = db.cars
-    .filter(c => c.photo && c.photo.startsWith('/uploads/'))
-    .map(c => ({ type: 'car', id: c.id, label: `${c.brand} ${c.model} — ${dealerName(c.dealerId)}`, photo: c.photo, sizeBytes: fileSize(c.photo) }));
+  // Une ligne par photo (jusqu'à 3 par véhicule) ; `slot` identifie l'emplacement.
+  const carPhotos = [];
+  for (const c of db.cars) {
+    carPhotoSlots(c).forEach((url, slot) => {
+      if (!url || !url.startsWith('/uploads/')) return;
+      carPhotos.push({ type: 'car', id: c.id, slot, label: `${c.brand} ${c.model} — ${dealerName(c.dealerId)} (${slot + 1}/3)`, photo: url, sizeBytes: fileSize(url) });
+    });
+  }
 
   const requestPhotos = db.requests
     .filter(r => r.photo && r.photo.startsWith('/uploads/'))
@@ -215,8 +220,11 @@ router.delete('/cars/:id/photo', (req, res) => {
   const db = store.load();
   const car = db.cars.find(c => c.id === Number(req.params.id));
   if (!car) return res.status(404).json({ error: translate(req.lang, 'car.notFound') });
-  deletePhotoFile(car.photo);
-  car.photo = '';
+  const slot = [0, 1, 2].includes(Number(req.query.slot)) ? Number(req.query.slot) : 0;
+  const slots = carPhotoSlots(car);
+  deletePhotoFile(slots[slot]);
+  slots[slot] = '';
+  setCarPhotos(car, slots);
   store.persist();
   res.json({ ok: true });
 });
@@ -237,7 +245,7 @@ router.delete('/cars/:id', (req, res) => {
   const db = store.load();
   const car = db.cars.find(c => c.id === Number(req.params.id));
   if (!car) return res.status(404).json({ error: translate(req.lang, 'car.notFound') });
-  deletePhotoFile(car.photo);
+  deleteCarPhotos(car);
   db.cars = db.cars.filter(c => c.id !== car.id);
   store.persist();
   res.json({ ok: true });
