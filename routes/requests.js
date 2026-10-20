@@ -4,6 +4,8 @@ const { requireAuth } = require('../middleware/auth');
 const { upload, deletePhotoFile } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
 
+const { canonicalBrand } = require('../lib/brands');
+
 const router = express.Router();
 
 function withOwner(db, r, lang) {
@@ -46,7 +48,7 @@ router.post('/', requireAuth('user'), upload.single('photo'), (req, res) => {
   const r = {
     id: store.nextId('requests'),
     userId: req.session.userId,
-    brand: brand.trim(),
+    brand: canonicalBrand(db, brand),
     model: model.trim(),
     year: Number(year),
     km: Number(km),
@@ -73,7 +75,7 @@ router.put('/:id', requireAuth('user'), upload.single('photo'), (req, res) => {
 
   const { brand, model, year, km, price, fuel, city, phone, description } = req.body;
   Object.assign(r, {
-    brand: brand?.trim() ?? r.brand,
+    brand: brand ? canonicalBrand(db, brand) : r.brand,
     model: model?.trim() ?? r.model,
     year: year ? Number(year) : r.year,
     km: km ? Number(km) : r.km,
