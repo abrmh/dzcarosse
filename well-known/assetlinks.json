@@ -1,8 +1,8 @@
 [{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.yourdomain.tomobiledz",
-    "sha256_cert_fingerprints": ["REPLACE:WITH:YOUR:SHA256:FINGERPRINT"]
-  }
-}]
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "pro.dzair_carosse.twa",
+        "sha256_cert_fingerprints": ["36:8B:EF:36:A2:1D:5F:23:E4:91:D0:B1:3C:04:3F:72:9F:36:60:6F:4F:91:AC:E6:1F:20:FD:20:FF:86:D9:F0"]
+      }
+    }]
