@@ -165,7 +165,7 @@ app.post('/api/messages', contactLimiter);
 //    voir README pour le passage en cluster/multi-instance.
 // ---------------------------------------------------------------------
 app.use(session({
-  name: 'tomobiledz.sid',
+  name: 'dzair-carosse.sid',
   secret: process.env.SESSION_SECRET || 'change-this-secret-in-production',
   resave: false,
   saveUninitialized: false,

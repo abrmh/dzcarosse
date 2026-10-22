@@ -1,8 +1,8 @@
 [{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "pro.dzair_carosse.twa",
-        "sha256_cert_fingerprints": ["36:8B:EF:36:A2:1D:5F:23:E4:91:D0:B1:3C:04:3F:72:9F:36:60:6F:4F:91:AC:E6:1F:20:FD:20:FF:86:D9:F0"]
-      }
-    }]
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "pro.dzair_carosse.twa",
+    "sha256_cert_fingerprints": ["07:F7:7E:23:CE:F8:EF:34:02:62:3A:D5:0E:C9:B0:DA:E0:52:07:E2:47:55:59:CC:E4:ED:42:94:8B:BF:BE:58"]
+  }
+}]

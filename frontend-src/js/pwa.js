@@ -3,7 +3,7 @@
    =========================================================
    Aucun bouton ni bandeau « Installer l'app » n'est affiché.
    On empêche aussi le mini-bandeau d'installation du navigateur.
-   window.TomobilePWA reste exposé (valeurs neutres) pour app.js.
+   window.DzairCarossePWA reste exposé (valeurs neutres) pour app.js.
    ========================================================= */
 
 if ('serviceWorker' in navigator) {
@@ -16,7 +16,7 @@ if ('serviceWorker' in navigator) {
 
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); });
 
-window.TomobilePWA = {
+window.DzairCarossePWA = {
   shouldOfferInstall: () => false,
   isInstalled: () => false,
   promptInstall: async () => {}

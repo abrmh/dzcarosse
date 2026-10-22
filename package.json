@@ -1,5 +1,5 @@
 {
-  "name": "tomobiledz-backend",
+  "name": "dzair-carosse-backend",
   "version": "1.0.0",
   "description": "Backend Node.js pour DZair Carrosse — marketplace de voitures (particuliers / concessionnaires / admin)",
   "main": "server.js",

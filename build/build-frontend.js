@@ -31,7 +31,7 @@ for (const f of files) {
   const heavy = f === 'app.js'; // early-lang/guard : options plus légères
   const out = JavaScriptObfuscator.obfuscate(code, {
     compact: true,
-    renameGlobals: false,            // évite de casser window.TomobilePWA, etc.
+    renameGlobals: false,            // évite de casser window.DzairCarossePWA, etc.
     identifierNamesGenerator: 'hexadecimal',
     stringArray: true,
     stringArrayThreshold: 0.75,

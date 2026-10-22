@@ -786,7 +786,7 @@ const I18N = {
 
 const RTL_LANGS = new Set(['ar']);
 const SUPPORTED_LANGS = ['fr', 'en', 'ar'];
-const LANG_STORAGE_KEY = 'tomobiledz_lang';
+const LANG_STORAGE_KEY = 'dzair-carosse_lang';
 
 function getLang() {
   const stored = localStorage.getItem(LANG_STORAGE_KEY);
