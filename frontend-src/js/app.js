@@ -657,6 +657,11 @@ function renderAnalyticsPanel() {
       </span>
     </div>
     <div class="stat-row">
+      <div class="stat"><div class="n">${a.logins.total}</div><div class="l">${t('analytics.loginsTotal')}</div></div>
+      <div class="stat"><div class="n">${a.logins.today}</div><div class="l">${t('analytics.loginsToday')}</div></div>
+      <div class="stat"><div class="n">${a.logins.period}</div><div class="l">${t('analytics.loginsPeriod', { n: a.days })}</div></div>
+    </div>
+    <div class="stat-row">
       <div class="stat"><div class="n">${sr.total}</div><div class="l">${t('analytics.searchesTotal')}</div></div>
       <div class="stat"><div class="n">${sr.noResult} <small style="font-size:14px">(${pctNone}%)</small></div><div class="l">${t('analytics.noResult')}</div></div>
       <div class="stat"><div class="n">${sr.unmatched}</div><div class="l">${t('analytics.unmatched')}</div></div>
@@ -664,6 +669,7 @@ function renderAnalyticsPanel() {
     <div class="an-grid">
       <div class="an-card"><h4>${t('analytics.searchesByBrand')}</h4>${hbars(brandItems)}</div>
       <div class="an-card"><h4>${t('analytics.searchesPerDay')}</h4>${barsSvg(sr.perDay, a.labels, '#E2531F')}</div>
+      <div class="an-card"><h4>${t('analytics.loginsPerDay')}</h4>${barsSvg(a.logins.perDay, a.labels, '#2E7D32')}</div>
       <div class="an-card"><h4>${t('analytics.signupsPerDay')}</h4>${barsSvg(a.signupsPerDay, a.labels, '#1C3661')}</div>
       <div class="an-card"><h4>${t('analytics.stockByBrand')}</h4>${hbars(a.stockByBrand)}</div>
       <div class="an-card"><h4>${t('analytics.requestsByBrand')}</h4>${hbars(a.requestsByBrand)}</div>

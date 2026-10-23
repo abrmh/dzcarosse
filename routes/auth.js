@@ -67,6 +67,7 @@ router.post('/register', async (req, res) => {
     lastActiveAt: Date.now()
   };
   db.users.push(user);
+  require('../lib/analytics').recordLogin();
   store.persist();
 
   req.session.userId = user.id;
@@ -84,6 +85,7 @@ router.post('/login', (req, res) => {
   }
 
   user.lastActiveAt = Date.now();
+  if (user.role !== 'admin') require('../lib/analytics').recordLogin();
   store.persist();
 
   req.session.userId = user.id;
