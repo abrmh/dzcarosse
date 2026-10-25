@@ -224,7 +224,10 @@ function renderHeader() {
   const navHome = `<button class="nav-btn ${view === 'home' ? 'active' : ''}" data-action="go" data-view="home">${t('nav.stock')}</button>`;
   // Contact : accessible à tout le monde, connecté ou non.
   const navContact = `<button class="nav-btn ${view === 'contact' ? 'active' : ''}" data-action="go" data-view="contact">${t('nav.contact')}</button>`;
-  const navInstall = ''; // bouton « Installer l'app » supprimé
+  // Bouton d'installation : visible tant que le site n'est pas déjà lancé
+  // en tant qu'app installée. Selon le navigateur, il déclenche l'invite
+  // native ou affiche le mode d'emploi (voir public/js/pwa.js).
+  const navInstall = ''; // bouton « Installer l'app » retiré à la demande du propriétaire
   let roleNav = '', userBox = '';
   if (!session) {
     userBox = `<button class="nav-cta" data-action="go" data-view="auth">${t('nav.login')}</button>`;
@@ -382,7 +385,13 @@ function renderDealerStockForm() {
     ${formMsg.dealerCar ? `<div class="form-msg err">${esc(formMsg.dealerCar)}</div>` : ''}
     <form data-form="dealer-car" data-id="${c ? c.id : ''}" enctype="multipart/form-data">
       <div class="field-row">
-        ${brandField(c ? c.brand : '')}
+        <div class="field"><label>${t('field.brand')}</label>
+          <div class="ac-wrap brand-ac-wrap">
+            <input name="brand" required autocomplete="off" data-brand-ac role="combobox" aria-autocomplete="list" aria-expanded="false" value="${esc(c ? c.brand : '')}">
+            <ul class="ac-list" id="brandAcList" role="listbox" hidden></ul>
+          </div>
+          <div class="hint" id="brandNote">${t('brand.hint')}</div>
+        </div>
         <div class="field"><label>${t('field.model')}</label><input name="model" required value="${esc(c ? c.model : '')}"></div>
       </div>
       <div class="field-row">
@@ -462,7 +471,7 @@ function renderUserSell() {
       ${formMsg.request ? `<div class="form-msg err">${esc(formMsg.request)}</div>` : ''}
       <form data-form="request" data-id="${r ? r.id : ''}" enctype="multipart/form-data">
         <div class="field-row">
-          ${brandField(r ? r.brand : '')}
+          <div class="field"><label>${t('field.brand')}</label><input name="brand" required value="${esc(r ? r.brand : '')}"></div>
           <div class="field"><label>${t('field.model')}</label><input name="model" required value="${esc(r ? r.model : '')}"></div>
         </div>
         <div class="field-row">
@@ -657,11 +666,6 @@ function renderAnalyticsPanel() {
       </span>
     </div>
     <div class="stat-row">
-      <div class="stat"><div class="n">${a.logins.total}</div><div class="l">${t('analytics.loginsTotal')}</div></div>
-      <div class="stat"><div class="n">${a.logins.today}</div><div class="l">${t('analytics.loginsToday')}</div></div>
-      <div class="stat"><div class="n">${a.logins.period}</div><div class="l">${t('analytics.loginsPeriod', { n: a.days })}</div></div>
-    </div>
-    <div class="stat-row">
       <div class="stat"><div class="n">${sr.total}</div><div class="l">${t('analytics.searchesTotal')}</div></div>
       <div class="stat"><div class="n">${sr.noResult} <small style="font-size:14px">(${pctNone}%)</small></div><div class="l">${t('analytics.noResult')}</div></div>
       <div class="stat"><div class="n">${sr.unmatched}</div><div class="l">${t('analytics.unmatched')}</div></div>
@@ -669,7 +673,6 @@ function renderAnalyticsPanel() {
     <div class="an-grid">
       <div class="an-card"><h4>${t('analytics.searchesByBrand')}</h4>${hbars(brandItems)}</div>
       <div class="an-card"><h4>${t('analytics.searchesPerDay')}</h4>${barsSvg(sr.perDay, a.labels, '#E2531F')}</div>
-      <div class="an-card"><h4>${t('analytics.loginsPerDay')}</h4>${barsSvg(a.logins.perDay, a.labels, '#2E7D32')}</div>
       <div class="an-card"><h4>${t('analytics.signupsPerDay')}</h4>${barsSvg(a.signupsPerDay, a.labels, '#1C3661')}</div>
       <div class="an-card"><h4>${t('analytics.stockByBrand')}</h4>${hbars(a.stockByBrand)}</div>
       <div class="an-card"><h4>${t('analytics.requestsByBrand')}</h4>${hbars(a.requestsByBrand)}</div>
@@ -992,93 +995,6 @@ function render() {
 /* =========================================================
    Interactions
    ========================================================= */
-// ---- Champ « Marque » avec autocomplétion (formulaires d'ajout de véhicule) ----
-function brandField(value) {
-  return `<div class="field"><label>${t('field.brand')}</label>
-    <div class="ac-wrap">
-      <input name="brand" id="brandInput" required maxlength="40" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="brandList" value="${esc(value || '')}">
-      <ul id="brandList" class="ac-list" role="listbox" hidden></ul>
-    </div>
-    <div class="brand-hint" id="brandHint" hidden></div></div>`;
-}
-
-let bcData = null, bcLoadedAt = 0, bcItems = [], bcActive = -1;
-const bcNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
-function bcFormat(v) {
-  const s = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40);
-  return s && s === s.toLowerCase() ? s.replace(/(^|[\s-])(\p{L})/gu, (m, p, c) => p + c.toUpperCase()) : s;
-}
-async function bcLoad() {
-  if (bcData && Date.now() - bcLoadedAt < 300000) return;
-  try { bcData = (await api('/api/cars/brand-options')).brands; bcLoadedAt = Date.now(); } catch (e) { bcData = bcData || []; }
-}
-function bcExact(v) { const n = bcNorm(v); return (bcData || []).find(b => bcNorm(b) === n); }
-
-function bcCompute(value) {
-  const needle = bcNorm(value);
-  const all = bcData || [];
-  if (!needle) return all.map(b => ({ label: b }));
-  const starts = all.filter(b => bcNorm(b).startsWith(needle));
-  const inside = all.filter(b => !bcNorm(b).startsWith(needle) && bcNorm(b).includes(needle));
-  const items = starts.concat(inside).map(b => ({ label: b }));
-  // Marque nouvelle : on propose de l'ajouter à la main (dès 2 lettres, pas pour une simple initiale).
-  if (needle.length >= 2 && !bcExact(value)) items.push({ label: bcFormat(value), add: true });
-  return items;
-}
-
-function bcRender() {
-  const input = document.getElementById('brandInput');
-  const list = document.getElementById('brandList');
-  if (!input || !list) return;
-  const head = !bcNorm(input.value) && bcItems.length ? `<li class="ac-head" role="presentation">${t('brand.listHead')}</li>` : '';
-  list.innerHTML = head + bcItems.map((it, i) => it.add
-    ? `<li role="option" id="bc-${i}" class="ac-item bc-item ac-add${i === bcActive ? ' active' : ''}" aria-selected="${i === bcActive}" data-label="${esc(it.label)}"><span>➕ ${esc(t('brand.addNew', { brand: it.label }))}</span></li>`
-    : `<li role="option" id="bc-${i}" class="ac-item bc-item${i === bcActive ? ' active' : ''}" aria-selected="${i === bcActive}" data-label="${esc(it.label)}"><span>${esc(it.label)}</span></li>`).join('');
-  list.hidden = !bcItems.length;
-  input.setAttribute('aria-expanded', String(!!bcItems.length));
-  const hint = document.getElementById('brandHint');
-  if (hint) {
-    const v = input.value.trim();
-    const isNew = v && bcData && !bcExact(v);
-    hint.hidden = !isNew;
-    if (isNew) hint.textContent = t('brand.newHint', { brand: bcFormat(v) });
-  }
-}
-function bcClose() { bcItems = []; bcActive = -1; bcRender(); }
-async function bcUpdate() {
-  await bcLoad();
-  const input = document.getElementById('brandInput');
-  if (!input) return;
-  bcItems = bcCompute(input.value); bcActive = -1; bcRender();
-}
-function bcPick(label) {
-  const input = document.getElementById('brandInput');
-  if (input) input.value = label;
-  bcClose();
-}
-// Écriture propre avant envoi (le serveur normalise aussi).
-function bcNormalizeInput(root) {
-  const input = (root || document).querySelector('#brandInput');
-  if (!input || !input.value.trim()) return;
-  input.value = bcExact(input.value) || bcFormat(input.value);
-}
-
-document.addEventListener('focusin', (e) => { if (e.target.id === 'brandInput') bcUpdate(); });
-document.addEventListener('input', (e) => { if (e.target.id === 'brandInput') bcUpdate(); });
-document.addEventListener('focusout', (e) => { if (e.target.id === 'brandInput') { bcNormalizeInput(); bcClose(); } });
-document.addEventListener('keydown', (e) => {
-  if (e.target.id !== 'brandInput') return;
-  if (e.key === 'ArrowDown' && bcItems.length) { e.preventDefault(); bcActive = (bcActive + 1) % bcItems.length; bcRender(); }
-  else if (e.key === 'ArrowUp' && bcItems.length) { e.preventDefault(); bcActive = (bcActive - 1 + bcItems.length) % bcItems.length; bcRender(); }
-  else if (e.key === 'Enter' && bcActive >= 0) { e.preventDefault(); bcPick(bcItems[bcActive].label); }
-  else if (e.key === 'Escape') bcClose();
-});
-document.addEventListener('pointerdown', (e) => {
-  const li = e.target.closest && e.target.closest('.bc-item');
-  if (li) { e.preventDefault(); bcPick(li.dataset.label); }
-  else if (!(e.target.closest && e.target.closest('.ac-wrap'))) bcClose();
-});
-
 // ---- Autocomplétion marques/modèles (liste chargée une fois, filtrée localement) ----
 let acData = null, acLoadedAt = 0, acItems = [], acActive = -1, acShowHead = false;
 const acNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -1122,6 +1038,94 @@ async function acUpdate(value) {
   acRender();
 }
 
+// ---- Suggestion de marques à la saisie d'un véhicule (formulaire concessionnaire) ----
+// Marques courantes en Algérie ; elles s'ajoutent à celles déjà publiées sur le site.
+const COMMON_BRANDS = ['Peugeot', 'Renault', 'Citroën', 'Dacia', 'Volkswagen', 'Seat', 'Škoda', 'Hyundai', 'Kia', 'Toyota',
+  'Nissan', 'Suzuki', 'Fiat', 'Opel', 'Ford', 'Chevrolet', 'Mercedes-Benz', 'BMW', 'Audi', 'Mazda', 'Mitsubishi', 'Honda',
+  'Chery', 'Geely', 'MG', 'Great Wall', 'DFSK', 'JAC', 'BYD', 'Haval', 'Isuzu', 'Land Rover', 'Jeep', 'Volvo', 'Alfa Romeo',
+  'Mini', 'Lexus', 'Porsche', 'Subaru', 'Tata', 'Iveco', 'Changan', 'Foton', 'Lada', 'Daewoo', 'SsangYong', 'Mahindra',
+  'Baic', 'GAC', 'Jetour', 'Dongfeng', 'Zotye', 'Lifan', 'Ravon', 'Infiniti', 'Jaguar', 'Tesla', 'Smart', 'Cupra', 'DS'];
+let brandAcItems = [], brandAcActive = -1, brandAcTyped = '';
+
+function brandAcAll() {
+  const map = new Map();
+  [...COMMON_BRANDS, ...((acData && acData.brands) || []).map(b => b.label)].forEach(b => {
+    const k = acNorm(b);
+    if (k && !map.has(k)) map.set(k, b);
+  });
+  return [...map.values()];
+}
+
+// Met en forme une marque saisie : casse officielle si elle existe déjà, sinon majuscule à chaque mot.
+function brandCanonical(typed) {
+  const raw = String(typed || '').trim().replace(/\s+/g, ' ');
+  if (!raw) return '';
+  const hit = brandAcAll().find(b => acNorm(b) === acNorm(raw));
+  if (hit) return hit;
+  return raw === raw.toLowerCase() ? raw.replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : raw;
+}
+
+function brandAcRender() {
+  const input = document.querySelector('input[data-brand-ac]');
+  const list = document.getElementById('brandAcList');
+  if (!input || !list) return;
+  list.innerHTML = brandAcItems.map((it, i) =>
+    it.add
+      ? `<li role="option" id="bac-${i}" class="ac-item bac-item bac-add${i === brandAcActive ? ' active' : ''}" aria-selected="${i === brandAcActive}" data-label="${esc(it.label)}" data-add="1"><span>➕ ${esc(t('brand.addOption').replace('{0}', it.label))}</span></li>`
+      : `<li role="option" id="bac-${i}" class="ac-item bac-item${i === brandAcActive ? ' active' : ''}" aria-selected="${i === brandAcActive}" data-label="${esc(it.label)}"><span>${esc(it.label)}</span></li>`).join('');
+  list.hidden = !brandAcItems.length;
+  input.setAttribute('aria-expanded', String(!!brandAcItems.length));
+}
+
+async function brandAcUpdate(value) {
+  await acLoad();
+  const needle = acNorm(value);
+  const all = brandAcAll();
+  let items = [];
+  if (needle) {
+    const starts = b => (acNorm(b).startsWith(needle) ? 0 : 1);
+    items = all.filter(b => acNorm(b).includes(needle)).sort((a, b) => starts(a) - starts(b) || a.localeCompare(b)).map(label => ({ label }));
+    // Marque inconnue : on propose de l'ajouter à la main.
+    if (needle.length >= 2 && !all.some(b => acNorm(b) === needle)) items.push({ label: brandCanonical(value), add: true });
+  } else {
+    items = all.sort((a, b) => a.localeCompare(b)).map(label => ({ label }));
+  }
+  brandAcItems = items;
+  brandAcActive = -1;
+  brandAcRender();
+}
+
+function brandAcClose() { brandAcItems = []; brandAcActive = -1; brandAcRender(); }
+
+function brandAcPick(label, isNew) {
+  const input = document.querySelector('input[data-brand-ac]');
+  if (!input) return;
+  input.value = label;
+  const note = document.getElementById('brandNote');
+  if (note) note.textContent = isNew ? t('brand.newNote').replace('{0}', label) : t('brand.hint');
+  brandAcClose();
+}
+
+document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('input[data-brand-ac]')) brandAcUpdate(e.target.value); });
+document.addEventListener('input', (e) => {
+  if (e.target.matches && e.target.matches('input[data-brand-ac]')) {
+    const note = document.getElementById('brandNote');
+    if (note) note.textContent = t('brand.hint');
+    brandAcUpdate(e.target.value);
+  }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.matches && e.target.matches('input[data-brand-ac]')) e.target.value = brandCanonical(e.target.value);
+});
+document.addEventListener('keydown', (e) => {
+  if (!(e.target.matches && e.target.matches('input[data-brand-ac]'))) return;
+  const n = brandAcItems.length;
+  if (e.key === 'ArrowDown' && n) { e.preventDefault(); brandAcActive = (brandAcActive + 1) % n; brandAcRender(); }
+  else if (e.key === 'ArrowUp' && n) { e.preventDefault(); brandAcActive = (brandAcActive - 1 + n) % n; brandAcRender(); }
+  else if (e.key === 'Enter' && brandAcActive >= 0) { e.preventDefault(); const it = brandAcItems[brandAcActive]; brandAcPick(it.label, !!it.add); }
+  else if (e.key === 'Escape' || e.key === 'Tab') brandAcClose();
+});
+
 async function applyFilters() {
   filters.q = (document.getElementById('fq') || { value: '' }).value.trim();
   filters.wilaya = (document.getElementById('fwilaya') || { value: '' }).value;
@@ -1147,9 +1151,10 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') acClose();
 });
 document.addEventListener('pointerdown', (e) => {
-  const li = e.target.closest && e.target.closest('#acList .ac-item'); // liste de la RECHERCHE uniquement (pas celle du champ marque)
-  if (li) { e.preventDefault(); acPick(li.dataset.label); }
-  else if (!(e.target.closest && e.target.closest('.ac-wrap'))) acClose();
+  const li = e.target.closest && e.target.closest('.ac-item');
+  if (li && li.classList.contains('bac-item')) { e.preventDefault(); brandAcPick(li.dataset.label, li.dataset.add === '1'); }
+  else if (li) { e.preventDefault(); acPick(li.dataset.label); }
+  else if (!(e.target.closest && e.target.closest('.ac-wrap'))) { acClose(); brandAcClose(); }
 });
 
 document.addEventListener('click', async (e) => {
@@ -1239,6 +1244,9 @@ document.addEventListener('click', async (e) => {
       try { await api('/api/admin/accounts/' + t2.dataset.id, { method: 'DELETE' }); await loadAdmin(); render(); }
       catch (err) { alert(err.message); }
     }
+  }
+  else if (action === 'install-app') {
+    if (window.TomobilePWA) await window.TomobilePWA.promptInstall();
   }
   else if (action === 'contact-reset') { contactSent = false; formMsg.contact = ''; render(); }
   else if (action === 'toggle-msg-read') {
@@ -1347,7 +1355,6 @@ document.addEventListener('submit', async (e) => {
       return;
     }
     if (type === 'dealer-car') {
-      bcNormalizeInput(form);
       const fd = new FormData(form);
       const id = form.dataset.id;
       if (!fd.get('brand') || !fd.get('model') || !fd.get('year') || !fd.get('price') || !fd.get('km') || !fd.get('city')) {
@@ -1360,7 +1367,6 @@ document.addEventListener('submit', async (e) => {
       return;
     }
     if (type === 'request') {
-      bcNormalizeInput(form);
       const fd = new FormData(form);
       const id = form.dataset.id;
       if (!fd.get('brand') || !fd.get('model') || !fd.get('year') || !fd.get('price') || !fd.get('km') || !fd.get('city') || !fd.get('phone')) {

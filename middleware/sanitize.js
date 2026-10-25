@@ -1,3 +1,5 @@
+const { translate } = require('../lib/i18n-server');
+
 // Retire récursivement les clés dangereuses (__proto__, constructor,
 // prototype) de req.body / req.query / req.params.
 //
@@ -35,4 +37,23 @@ function sanitizeInput(req, res, next) {
   next();
 }
 
-module.exports = { sanitizeInput, stripDangerousKeys };
+// Normalise le corps de la requête : l'API n'attend que des valeurs simples (texte,
+// nombre, booléen). Un objet ou un tableau (ex. {"password": {"a": 1}} ou un champ
+// répété) est refusé, et les nombres / booléens deviennent du texte. Cela évite les
+// erreurs de type (.trim() sur un tableau, etc.) et toute confusion de type.
+function normalizeBody(req, res, next) {
+  const body = req.body;
+  if (body && typeof body === 'object') {
+    for (const key of Object.keys(body)) {
+      const v = body[key];
+      if (v === null || v === undefined) { delete body[key]; continue; }
+      if (typeof v === 'object') {
+        return res.status(400).json({ error: translate(req.lang, 'generic.badRequest') });
+      }
+      if (typeof v !== 'string') body[key] = String(v);
+    }
+  }
+  next();
+}
+
+module.exports = { sanitizeInput, stripDangerousKeys, normalizeBody };

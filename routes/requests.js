@@ -1,12 +1,11 @@
 const express = require('express');
 const store = require('../lib/store');
 const { requireAuth } = require('../middleware/auth');
-const { upload, deletePhotoFile } = require('../lib/upload');
+const { uploadSingle, deletePhotoFile } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
 
-const { canonicalBrand } = require('../lib/brands');
-
 const router = express.Router();
+const MAX_REQUESTS_PER_USER = 20;
 
 function withOwner(db, r, lang) {
   const owner = db.users.find(u => u.id === r.userId);
@@ -37,8 +36,12 @@ router.get('/:id', requireAuth('dealer', 'admin'), (req, res) => {
 });
 
 // Dépôt d'une annonce par un particulier — avec sa vraie photo et ses infos.
-router.post('/', requireAuth('user'), upload.single('photo'), (req, res) => {
+router.post('/', requireAuth('user'), uploadSingle('photo'), (req, res) => {
   const db = store.load();
+  // Plafond par compte : un particulier ne peut pas saturer le disque d'offres et de photos.
+  if (db.requests.filter(x => x.userId === req.session.userId).length >= MAX_REQUESTS_PER_USER) {
+    return res.status(400).json({ error: translate(req.lang, 'request.limitReached') });
+  }
   const { brand, model, year, km, price, fuel, city, phone, description } = req.body;
 
   if (!brand || !model || !year || !km || !price || !city || !phone) {
@@ -48,7 +51,7 @@ router.post('/', requireAuth('user'), upload.single('photo'), (req, res) => {
   const r = {
     id: store.nextId('requests'),
     userId: req.session.userId,
-    brand: canonicalBrand(db, brand),
+    brand: brand.trim(),
     model: model.trim(),
     year: Number(year),
     km: Number(km),
@@ -65,7 +68,7 @@ router.post('/', requireAuth('user'), upload.single('photo'), (req, res) => {
   res.status(201).json({ request: r });
 });
 
-router.put('/:id', requireAuth('user'), upload.single('photo'), (req, res) => {
+router.put('/:id', requireAuth('user'), uploadSingle('photo'), (req, res) => {
   const db = store.load();
   const r = db.requests.find(x => x.id === Number(req.params.id));
   if (!r) return res.status(404).json({ error: translate(req.lang, 'request.notFound') });
@@ -75,7 +78,7 @@ router.put('/:id', requireAuth('user'), upload.single('photo'), (req, res) => {
 
   const { brand, model, year, km, price, fuel, city, phone, description } = req.body;
   Object.assign(r, {
-    brand: brand ? canonicalBrand(db, brand) : r.brand,
+    brand: brand?.trim() ?? r.brand,
     model: model?.trim() ?? r.model,
     year: year ? Number(year) : r.year,
     km: km ? Number(km) : r.km,

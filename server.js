@@ -8,8 +8,9 @@ const cors = require('cors');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const crypto = require('crypto');
 
-const { sanitizeInput } = require('./middleware/sanitize');
+const { sanitizeInput, normalizeBody } = require('./middleware/sanitize');
 const { translate, detectLangMiddleware } = require('./lib/i18n-server');
 
 const app = express();
@@ -106,6 +107,8 @@ app.use(express.urlencoded({ extended: true, limit: '200kb' }));
 // Neutralise la pollution de prototype (__proto__, constructor...) sur
 // req.body / req.query / req.params, sur toutes les routes.
 app.use(sanitizeInput);
+// Refuse les objets / tableaux dans le corps JSON, convertit nombres et booléens en texte.
+app.use(normalizeBody);
 
 // Langue de la réponse API (FR/EN/AR) — voir lib/i18n-server.js. Doit être
 // posé avant les limiteurs de débit ci-dessous pour que leurs messages
@@ -143,6 +146,17 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
+// Création de comptes : on compte aussi les réussites (contrairement au limiteur
+// ci-dessus) pour empêcher un script de fabriquer des milliers de comptes.
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: Number(process.env.REGISTER_RATE_LIMIT_MAX || 10), // 10 inscriptions / heure / IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: (req) => ({ error: translate(req.lang, 'generic.authRateLimited') })
+});
+app.post('/api/auth/register', registerLimiter);
+
 // Formulaire de contact : seule route d'écriture ouverte au public (sans
 // compte). Elle mérite donc sa propre limite, plus stricte que l'API
 // générale, pour éviter qu'un script ne noie l'admin sous les messages.
@@ -164,9 +178,21 @@ app.post('/api/messages', contactLimiter);
 //    Le store par défaut (MemoryStore) est correct pour un seul process ;
 //    voir README pour le passage en cluster/multi-instance.
 // ---------------------------------------------------------------------
+// Secret de session : jamais de valeur connue par défaut. S'il manque (ou si c'est
+// l'exemple de .env.example), on en génère un aléatoire à chaque démarrage — les
+// connexions sont alors perdues au redémarrage, ce qui rend le problème visible.
+const PLACEHOLDER_SECRETS = ['change-this-to-a-long-random-string', 'change-this-secret-in-production'];
+const envSecret = process.env.SESSION_SECRET;
+const sessionSecret = (envSecret && envSecret.length >= 16 && !PLACEHOLDER_SECRETS.includes(envSecret))
+  ? envSecret
+  : crypto.randomBytes(32).toString('hex');
+if (sessionSecret !== envSecret) {
+  console.warn('⚠️  SESSION_SECRET absent ou trop faible : un secret temporaire a été généré (les sessions seront perdues au redémarrage). Définissez SESSION_SECRET dans .env.');
+}
+
 app.use(session({
-  name: 'dzair-carosse.sid',
-  secret: process.env.SESSION_SECRET || 'change-this-secret-in-production',
+  name: 'tomobiledz.sid',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   // Par défaut (SESSION_STORE non défini) : MemoryStore, parfait pour un
@@ -234,9 +260,21 @@ app.use((err, req, res, next) => {
   if (err && err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ error: translate(lang, 'upload.tooLarge') });
   }
-  if (err && err.message) {
-    const status = err.status || 400;
-    return res.status(status).json({ error: err.message });
+  if (err && err.name === 'MulterError') {
+    return res.status(400).json({ error: translate(lang, 'generic.badRequest') });
+  }
+  // Corps trop gros / JSON invalide : réponse générique (on ne renvoie pas le détail technique).
+  if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+    return res.status(413).json({ error: translate(lang, 'generic.badRequest') });
+  }
+  if (err && (err.type === 'entity.parse.failed' || err.type === 'encoding.unsupported')) {
+    return res.status(400).json({ error: translate(lang, 'generic.badRequest') });
+  }
+  // Seules nos propres erreurs « sûres » (err.expose, ex. type de fichier refusé) sont
+  // affichées telles quelles. Toute autre erreur reste dans les journaux du serveur :
+  // renvoyer err.message au client pourrait révéler des détails internes.
+  if (err && err.expose === true && err.message) {
+    return res.status(err.status || 400).json({ error: err.message });
   }
   console.error(err);
   res.status(500).json({ error: translate(lang, 'generic.serverError') });

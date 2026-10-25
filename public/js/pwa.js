@@ -1,1 +1,174 @@
-var _0x1a047e=_0x3c93;(function(_0x294f99,_0x30aa1b){var _0x3b8409=_0x3c93,_0x2da41d=_0x294f99();while(!![]){try{var _0x13b656=parseInt(_0x3b8409(0x84))/0x1+-parseInt(_0x3b8409(0x86))/0x2+parseInt(_0x3b8409(0x97))/0x3+parseInt(_0x3b8409(0x87))/0x4+-parseInt(_0x3b8409(0x8f))/0x5*(parseInt(_0x3b8409(0x79))/0x6)+parseInt(_0x3b8409(0x90))/0x7+-parseInt(_0x3b8409(0x93))/0x8;if(_0x13b656===_0x30aa1b)break;else _0x2da41d['push'](_0x2da41d['shift']());}catch(_0x2198ea){_0x2da41d['push'](_0x2da41d['shift']());}}}(_0x340b,0x92723));var _0x4cab32=(function(){var _0x48b50f=!![];return function(_0x53dc94,_0x52eb3b){var _0x1fd5b6=_0x48b50f?function(){var _0x303667=_0x3c93;if(_0x52eb3b){var _0xda61aa=_0x52eb3b[_0x303667(0x83)](_0x53dc94,arguments);return _0x52eb3b=null,_0xda61aa;}}:function(){};return _0x48b50f=![],_0x1fd5b6;};}()),_0x45170f=_0x4cab32(this,function(){var _0x12d8c2=_0x3c93,_0x3a786c=function(){var _0x2bc811=_0x3c93,_0x3fe87c;try{_0x3fe87c=Function(_0x2bc811(0x94)+_0x2bc811(0x91)+');')();}catch(_0x1722a0){_0x3fe87c=window;}return _0x3fe87c;},_0x3a1d7f=_0x3a786c(),_0x52810b=_0x3a1d7f['console']=_0x3a1d7f[_0x12d8c2(0x8d)]||{},_0x17a91d=['log',_0x12d8c2(0x7d),_0x12d8c2(0x8b),_0x12d8c2(0x95),_0x12d8c2(0x81),_0x12d8c2(0x92),_0x12d8c2(0x7f)];for(var _0x5aa3fc=0x0;_0x5aa3fc<_0x17a91d[_0x12d8c2(0x7e)];_0x5aa3fc++){var _0x2136b1=_0x4cab32['constructor']['prototype']['bind'](_0x4cab32),_0x4f468f=_0x17a91d[_0x5aa3fc],_0x322ef2=_0x52810b[_0x4f468f]||_0x2136b1;_0x2136b1[_0x12d8c2(0x80)]=_0x4cab32['bind'](_0x4cab32),_0x2136b1['toString']=_0x322ef2[_0x12d8c2(0x89)][_0x12d8c2(0x7c)](_0x322ef2),_0x52810b[_0x4f468f]=_0x2136b1;}});function _0x3c93(_0x2d5dfb,_0xbee934){_0x2d5dfb=_0x2d5dfb-0x79;var _0x22fd68=_0x340b();var _0x45170f=_0x22fd68[_0x2d5dfb];return _0x45170f;}_0x45170f();_0x1a047e(0x7b)in navigator&&window['addEventListener'](_0x1a047e(0x88),()=>{var _0x4a80d6=_0x1a047e;navigator['serviceWorker'][_0x4a80d6(0x8a)](_0x4a80d6(0x8e))[_0x4a80d6(0x8c)](_0x434742=>{var _0x24a66b=_0x4a80d6;console['warn'](_0x24a66b(0x82),_0x434742);});});function _0x340b(){var _0x3e77f8=['serviceWorker','bind','warn','length','trace','__proto__','exception','Service\x20worker\x20non\x20enregistré\x20:','apply','1069779nkSsEu','preventDefault','1870706gLIitf','3912440HrJNpU','load','toString','register','info','catch','console','/sw.js','385JarrBk','894117pRrQFQ','{}.constructor(\x22return\x20this\x22)(\x20)','table','9480400taFlIj','return\x20(function()\x20','error','beforeinstallprompt','3398025aXUVks','45822TLSEjU','DzairCarossePWA'];_0x340b=function(){return _0x3e77f8;};return _0x340b();}window['addEventListener'](_0x1a047e(0x96),_0x43bf11=>{var _0xbba861=_0x1a047e;_0x43bf11[_0xbba861(0x85)]();}),window[_0x1a047e(0x7a)]={'shouldOfferInstall':()=>![],'isInstalled':()=>![],'promptInstall':async()=>{}};
+/* =========================================================
+   DZair Carrosse — installation en app (PWA)
+   =========================================================
+   Trois façons d'installer, par ordre de préférence :
+
+   1) Invite native du navigateur (Chrome/Edge/Android...) : le navigateur
+      nous confie l'évènement `beforeinstallprompt`, qu'on déclenche au
+      moment choisi par l'utilisateur.
+   2) Bouton « Installer l'app » toujours présent dans le menu tant que le
+      site n'est pas installé — indispensable, car le bandeau automatique
+      ne s'affiche qu'une fois et certains navigateurs n'émettent jamais
+      l'évènement natif (Safari, Firefox, Samsung Internet...).
+   3) Mode d'emploi manuel, adapté au navigateur détecté, quand aucune
+      invite native n'est disponible.
+
+   Expose window.TomobilePWA pour que l'interface (public/js/app.js) sache
+   s'il faut afficher le bouton et puisse déclencher l'installation.
+   ========================================================= */
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Service worker non enregistré :', err);
+    });
+  });
+}
+
+window.TomobilePWA = (function () {
+  const DISMISS_KEY = 'tomobiledz_install_dismissed';
+  let deferredPrompt = null;
+
+  function tr(key, fallback) {
+    return typeof t === 'function' ? t(key) : (fallback || key);
+  }
+
+  function isStandalone() {
+    try {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || window.navigator.standalone === true; // Safari iOS
+    } catch (e) { return false; }
+  }
+
+  // Détection du navigateur, uniquement pour afficher le bon mode d'emploi.
+  // L'ordre compte : sur iOS, tous les navigateurs utilisent le moteur de
+  // Safari et passent par le même menu Partager.
+  function platform() {
+    const ua = navigator.userAgent;
+    if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+    if (/android/i.test(ua)) {
+      if (/samsungbrowser/i.test(ua)) return 'samsung';
+      if (/firefox|fxios/i.test(ua)) return 'firefox';
+      return 'android';
+    }
+    if (/firefox/i.test(ua)) return 'firefox';
+    if (/edg/i.test(ua)) return 'desktop';
+    if (/chrome|chromium/i.test(ua)) return 'desktop';
+    if (/safari/i.test(ua)) return 'macsafari';
+    return 'other';
+  }
+
+  function instructionsKey() {
+    switch (platform()) {
+      case 'ios': return 'pwa.howto.ios';
+      case 'android': return 'pwa.howto.android';
+      case 'samsung': return 'pwa.howto.samsung';
+      case 'firefox': return 'pwa.howto.firefox';
+      case 'macsafari': return 'pwa.howto.macsafari';
+      case 'desktop': return 'pwa.howto.desktop';
+      default: return 'pwa.howto.other';
+    }
+  }
+
+  function wasDismissed() {
+    try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function rememberDismissed() {
+    try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) {}
+  }
+
+  function removeBanner() {
+    const el = document.getElementById('pwaInstallBar');
+    if (el) el.remove();
+  }
+
+  // --- Mode d'emploi manuel (quand aucune invite native n'existe) -------
+  function showInstructions() {
+    if (document.getElementById('pwaHowto')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'pwaHowto';
+    overlay.className = 'overlay';
+    overlay.innerHTML = `
+      <div class="modal pwa-howto-modal">
+        <div class="modal-body">
+          <button class="modal-close" type="button" data-pwa-close>×</button>
+          <h2 style="margin:0 0 10px">${tr('pwa.howtoTitle')}</h2>
+          <p style="line-height:1.6;margin:0 0 18px">${tr(instructionsKey())}</p>
+          <button class="btn-primary" type="button" data-pwa-close style="width:100%">${tr('pwa.gotIt')}</button>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.hasAttribute('data-pwa-close')) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+  }
+
+  // --- Déclenche l'installation (appelé par le bouton du menu) ----------
+  async function promptInstall() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (e) {}
+      deferredPrompt = null;
+      removeBanner();
+      refreshUi();
+      return;
+    }
+    // Pas d'invite native disponible : on explique la marche à suivre.
+    showInstructions();
+  }
+
+  // --- Bandeau automatique (une seule fois, refermable) -----------------
+  function showBanner() {
+    if (isStandalone() || wasDismissed() || document.getElementById('pwaInstallBar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'pwaInstallBar';
+    bar.className = 'pwa-install-bar';
+    bar.innerHTML = `
+      <span>${tr('pwa.installPrompt')}</span>
+      <div class="pwa-install-actions">
+        <button type="button" class="pwa-install-btn" id="pwaInstallGo">${tr('pwa.installBtn')}</button>
+        <button type="button" class="pwa-install-dismiss" id="pwaInstallDismiss" aria-label="${tr('pwa.later')}">✕</button>
+      </div>`;
+    document.body.appendChild(bar);
+
+    document.getElementById('pwaInstallDismiss').addEventListener('click', () => {
+      rememberDismissed();
+      removeBanner();
+    });
+    document.getElementById('pwaInstallGo').addEventListener('click', promptInstall);
+  }
+
+  // Redessine l'interface pour que le bouton du menu apparaisse/disparaisse.
+  function refreshUi() {
+    if (typeof render === 'function') {
+      try { render(); } catch (e) {}
+    }
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Ni bouton dans le menu ni bandeau : l'installation n'est plus proposée.
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    rememberDismissed();
+    removeBanner();
+    refreshUi();
+  });
+
+  // Navigateurs sans évènement natif (iOS en tête) : on propose quand même
+  // le bandeau, qui renverra vers le mode d'emploi manuel.
+
+  return {
+    // L'interface affiche le bouton tant que l'app n'est pas installée.
+    // On ne conditionne PAS à deferredPrompt : sans lui, le bouton ouvre
+    // le mode d'emploi, ce qui reste utile (Safari, Firefox...).
+    shouldOfferInstall: () => false,
+    isInstalled: isStandalone,
+    promptInstall,
+    showInstructions
+  };
+})();

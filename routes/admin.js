@@ -23,7 +23,7 @@ function accountWithCounts(db, u) {
 
 // Seul l'admin peut créer un compte concessionnaire — c'est ce compte
 // qui donne au concessionnaire le droit de publier des voitures à vendre.
-router.post('/dealers', (req, res) => {
+router.post('/dealers', async (req, res) => {
   const db = store.load();
   const { username, password, name, wilaya, city, phone } = req.body;
 
@@ -33,7 +33,7 @@ router.post('/dealers', (req, res) => {
   if (!USERNAME_RE.test(username.trim())) {
     return res.status(400).json({ error: translate(req.lang, 'auth.usernameFormat') });
   }
-  if (password.length < 8) {
+  if (password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
   }
   if (!isValidWilaya(wilaya)) {
@@ -46,7 +46,7 @@ router.post('/dealers', (req, res) => {
   const dealer = {
     id: store.nextId('users'),
     username: username.trim(),
-    passwordHash: bcrypt.hashSync(password, 10),
+    passwordHash: await bcrypt.hash(password, 10),
     role: 'dealer',
     name: name.trim(),
     wilaya: String(wilaya),
@@ -105,7 +105,7 @@ router.put('/accounts/:id', (req, res) => {
     acc.city = String(city).trim() || (acc.role === 'dealer' ? wilayaName(dealerWilaya(acc)) : '');
   }
   if (password) {
-    if (password.length < 8) return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
+    if (password.length < 8 || password.length > 128) return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
     acc.passwordHash = bcrypt.hashSync(password, 10);
   }
 

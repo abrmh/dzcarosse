@@ -3,7 +3,7 @@
 // lors d'une visite précédente.
 (function () {
   try {
-    var lang = localStorage.getItem('dzair-carosse_lang') || (navigator.language || 'fr').slice(0, 2);
+    var lang = localStorage.getItem('tomobiledz_lang') || (navigator.language || 'fr').slice(0, 2);
     if (['fr', 'en', 'ar'].indexOf(lang) === -1) lang = 'fr';
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';

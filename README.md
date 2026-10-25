@@ -29,7 +29,7 @@ ADMIN_NAME=Administrateur
 
 Au premier démarrage, la base est créée automatiquement avec :
 - le compte admin défini par votre `.env`
-- deux comptes concessionnaire de démo : `alger-auto` / `dealer123` et `oran-motors` / `dealer123`
+- (uniquement avec `SEED_DEMO=1`, jamais en production) deux comptes concessionnaire de démo : `alger-auto` / `dealer123` et `oran-motors` / `dealer123`
 - quelques voitures d'exemple avec de vraies photos
 
 Pensez à changer les mots de passe de démo avant toute mise en ligne réelle.

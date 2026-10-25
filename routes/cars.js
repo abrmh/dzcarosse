@@ -4,7 +4,6 @@ const { requireAuth } = require('../middleware/auth');
 const { carUpload, deletePhotoFile, CAR_PHOTO_FIELDS, carPhotoSlots, setCarPhotos, deleteCarPhotos, uploadedCarFiles, discardUploaded } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
 const analytics = require('../lib/analytics');
-const { brandOptions, canonicalBrand } = require('../lib/brands');
 const { dealerWilaya, isValidWilaya } = require('../lib/wilayas');
 
 const router = express.Router();
@@ -96,13 +95,6 @@ router.get('/suggestions', (req, res) => {
   res.json({ brands: top(brands, 1000), models: top(models, 2000) });
 });
 
-// Liste de marques proposée aux concessionnaires quand ils ajoutent un véhicule
-// (marques de référence + marques déjà utilisées en base).
-router.get('/brand-options', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.json({ brands: brandOptions(store.load()) });
-});
-
 router.get('/:id', (req, res) => {
   const db = store.load();
   const car = db.cars.find(c => c.id === Number(req.params.id));
@@ -124,7 +116,7 @@ router.post('/', requireAuth('dealer'), carUpload, (req, res) => {
   const car = {
     id: store.nextId('cars'),
     dealerId: dealer.id,
-    brand: canonicalBrand(db, brand),
+    brand: brand.trim(),
     model: model.trim(),
     year: Number(year),
     km: Number(km),
@@ -157,7 +149,7 @@ router.put('/:id', requireAuth('dealer'), carUpload, (req, res) => {
 
   const { brand, model, year, km, price, fuel, gearbox, color, city, description, contactPhone, contactName } = req.body;
   Object.assign(car, {
-    brand: brand ? canonicalBrand(db, brand) : car.brand,
+    brand: brand?.trim() ?? car.brand,
     model: model?.trim() ?? car.model,
     year: year ? Number(year) : car.year,
     km: km ? Number(km) : car.km,

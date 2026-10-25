@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const store = require('../lib/store');
 const { requireAuth, publicUser } = require('../middleware/auth');
 const { translate } = require('../lib/i18n-server');
-const { deletePhotoFile } = require('../lib/upload');
+const { deletePhotoFile, deleteCarPhotos } = require('../lib/upload');
 
 const router = express.Router();
 
@@ -34,7 +34,7 @@ router.post('/register', async (req, res) => {
   if (!USERNAME_RE.test(username.trim())) {
     return res.status(400).json({ error: translate(req.lang, 'auth.usernameFormat') });
   }
-  if (password.length < 8) {
+  if (password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
   }
   if (name.trim().length > 100 || phone.trim().length > 30) {
@@ -57,7 +57,7 @@ router.post('/register', async (req, res) => {
   const user = {
     id: store.nextId('users'),
     username: username.trim(),
-    passwordHash: bcrypt.hashSync(password, 10),
+    passwordHash: await bcrypt.hash(password, 10),
     role: 'user',
     name: name.trim(),
     phone: phone.trim(),
@@ -67,30 +67,41 @@ router.post('/register', async (req, res) => {
     lastActiveAt: Date.now()
   };
   db.users.push(user);
-  require('../lib/analytics').recordLogin();
   store.persist();
 
-  req.session.userId = user.id;
-  req.session.role = user.role;
-  res.status(201).json({ user: publicUser(user) });
+  // Nouvel identifiant de session à chaque inscription (anti « session fixation »).
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: translate(req.lang, 'generic.serverError') });
+    req.session.userId = user.id;
+    req.session.role = user.role;
+    res.status(201).json({ user: publicUser(user) });
+  });
 });
 
-router.post('/login', (req, res) => {
+// Hash factice : on fait toujours un calcul bcrypt, même si l'identifiant n'existe pas,
+// pour que le temps de réponse ne révèle pas quels identifiants existent.
+const DUMMY_HASH = bcrypt.hashSync('mot-de-passe-factice-pour-le-timing', 10);
+
+router.post('/login', async (req, res) => {
   const db = store.load();
   const { username, password } = req.body;
-  const user = db.users.find(u => u.username.toLowerCase() === (username || '').toLowerCase());
+  const fail = () => res.status(401).json({ error: translate(req.lang, 'auth.loginFailed') });
+  if (typeof username !== 'string' || typeof password !== 'string' || password.length > 128) return fail();
 
-  if (!user || !bcrypt.compareSync(password || '', user.passwordHash)) {
-    return res.status(401).json({ error: translate(req.lang, 'auth.loginFailed') });
-  }
+  const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  const ok = await bcrypt.compare(password, user ? user.passwordHash : DUMMY_HASH);
+  if (!user || !ok) return fail();
 
   user.lastActiveAt = Date.now();
-  if (user.role !== 'admin') require('../lib/analytics').recordLogin();
   store.persist();
 
-  req.session.userId = user.id;
-  req.session.role = user.role;
-  res.json({ user: publicUser(user) });
+  // Nouvel identifiant de session à chaque connexion (anti « session fixation »).
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: translate(req.lang, 'generic.serverError') });
+    req.session.userId = user.id;
+    req.session.role = user.role;
+    res.json({ user: publicUser(user) });
+  });
 });
 
 router.post('/logout', (req, res) => {
@@ -121,13 +132,13 @@ router.put('/me', requireAuth(), async (req, res) => {
   const { name, phone, email, city, wilaya, currentPassword, newPassword } = req.body;
 
   if (newPassword) {
-    if (!currentPassword || !bcrypt.compareSync(currentPassword, user.passwordHash)) {
+    if (!currentPassword || currentPassword.length > 128 || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
       return res.status(401).json({ error: translate(req.lang, 'auth.currentPasswordWrong') });
     }
-    if (newPassword.length < 8) {
+    if (newPassword.length < 8 || newPassword.length > 128) {
       return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
     }
-    user.passwordHash = bcrypt.hashSync(newPassword, 10);
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
   }
   if (email !== undefined) {
     const trimmedEmail = email.trim();
@@ -181,7 +192,7 @@ router.delete('/me', requireAuth(), (req, res) => {
 
   db.users = db.users.filter(u => u.id !== user.id);
   if (user.role === 'dealer') {
-    db.cars.filter(c => c.dealerId === user.id).forEach(c => deletePhotoFile(c.photo));
+    db.cars.filter(c => c.dealerId === user.id).forEach(c => deleteCarPhotos(c));
     db.cars = db.cars.filter(c => c.dealerId !== user.id);
   } else {
     db.requests.filter(r => r.userId === user.id).forEach(r => deletePhotoFile(r.photo));

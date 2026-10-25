@@ -265,7 +265,7 @@ code{font-size:12.5px;}
 .gallery-thumb.active{border-color:var(--accent);}
 @media (max-width:560px){.car-photo-slots{grid-template-columns:1fr;}.gallery-main{height:240px;}.gallery-thumb img{height:52px;}}
 
-/* Champ marque (formulaires) */
-.field .ac-wrap{flex:none;min-width:0;}
-.ac-item.ac-add{color:var(--accent-dark);font-weight:600;border-top:1px solid var(--border);}
-.brand-hint{margin-top:6px;font-size:13px;color:var(--accent-dark);}
+.brand-ac-wrap{flex:none;width:100%;}
+.brand-ac-wrap input{width:100%;box-sizing:border-box;}
+.bac-add{color:var(--accent-dark);font-weight:600;border-top:1px solid var(--border);}
+.ac-list{max-height:260px;overflow-y:auto;}
