@@ -1,12 +1,13 @@
-	
-0	
-relation	
-0	"delegate_permission/common.handle_all_urls"
-target	
-namespace	"android_app"
-package_name	"pro.dzair_carosse.twa"
-sha256_cert_fingerprints	
-0	"81:5C:72:A2:3F:39:B1:72:D8:F1:C7:6B:4F:E3:77:F6:C7:6E:93:BE:4F:D6:AB:21:BA:32:F2:01:BF:2A:17:B0"
-1	"EF:F6:AA:DA:9E:DB:9C:C5:3C:0E:2C:09:1A:2D:E0:CD:E7:FA:3D:42:8F:7B:D5:17:10:8A:6B:6D:FC:3E:6D:03"
-2	"90:C3:FD:7E:45:F6:FD:5B:33:C2:CD:84:AE:7F:50:AA:D1:5C:CE:F5:3C:F0:ED:36:8B:36:B2:F5:97:58:86:A0"
-3	"AE:74:5A:49:47:A8:5D:32:4A:10:D5:10:A3:C5:9E:71:E5:9C:84:06:05:96:F1:76:91:31:7B:5A:D0:A7:5D:27"
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "pro.dzair_carosse.twa",
+    "sha256_cert_fingerprints": [
+      "81:5C:72:A2:3F:39:B1:72:D8:F1:C7:6B:4F:E3:77:F6:C7:6E:93:BE:4F:D6:AB:21:BA:32:F2:01:BF:2A:17:B0",
+      "EF:F6:AA:DA:9E:DB:9C:C5:3C:0E:2C:09:1A:2D:E0:CD:E7:FA:3D:42:8F:7B:D5:17:10:8A:6B:6D:FC:3E:6D:03",
+      "90:C3:FD:7E:45:F6:FD:5B:33:C2:CD:84:AE:7F:50:AA:D1:5C:CE:F5:3C:F0:ED:36:8B:36:B2:F5:97:58:86:A0",
+      "AE:74:5A:49:47:A8:5D:32:4A:10:D5:10:A3:C5:9E:71:E5:9C:84:06:05:96:F1:76:91:31:7B:5A:D0:A7:5D:27"
+    ]
+  }
+}]
