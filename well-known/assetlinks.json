@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "pro.dzair_carosse.twa",
-    "sha256_cert_fingerprints": ["AE:74:5A:49:47:A8:5D:32:4A:10:D5:10:A3:C5:9E:71:E5:9C:84:06:05:96:F1:76:91:31:7B:5A:D0:A7:5D:27"]
+    "sha256_cert_fingerprints": [
+      "90:C3:FD:7E:45:F6:FD:5B:33:C2:CD:84:AE:7F:50:AA:D1:5C:CE:F5:3C:F0:ED:36:8B:36:B2:F5:97:58:86:A0",
+      "AE:74:5A:49:47:A8:5D:32:4A:10:D5:10:A3:C5:9E:71:E5:9C:84:06:05:96:F1:76:91:31:7B:5A:D0:A7:5D:27"
+    ]
   }
 }]
