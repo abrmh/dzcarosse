@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.yourdomain.dzaircarrosse",
-    "sha256_cert_fingerprints": ["REPLACE:WITH:YOUR:SHA256:FINGERPRINT"]
+    "package_name": "pro.dzair_carosse.twa",
+    "sha256_cert_fingerprints": ["AE:74:5A:49:47:A8:5D:32:4A:10:D5:10:A3:C5:9E:71:E5:9C:84:06:05:96:F1:76:91:31:7B:5A:D0:A7:5D:27"]
   }
 }]
