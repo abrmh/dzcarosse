@@ -74,6 +74,7 @@ router.post('/register', async (req, res) => {
     if (err) return res.status(500).json({ error: translate(req.lang, 'generic.serverError') });
     req.session.userId = user.id;
     req.session.role = user.role;
+    require('../lib/analytics').recordLogin();
     res.status(201).json({ user: publicUser(user) });
   });
 });
@@ -100,6 +101,7 @@ router.post('/login', async (req, res) => {
     if (err) return res.status(500).json({ error: translate(req.lang, 'generic.serverError') });
     req.session.userId = user.id;
     req.session.role = user.role;
+    require('../lib/analytics').recordLogin();
     res.json({ user: publicUser(user) });
   });
 });

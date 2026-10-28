@@ -152,6 +152,12 @@ router.delete('/security', (req, res) => {
 });
 
 // Tableau de bord : recherches par marque (%), inscriptions, stock...
+// Compteur en direct (léger, interrogé toutes les 30 s par l'écran admin).
+router.get('/traffic', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ...require('../lib/presence').snapshot(), ...require('../lib/analytics').todayTraffic() });
+});
+
 router.get('/analytics', (req, res) => {
   const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
   res.json(require('../lib/analytics').buildReport(days));

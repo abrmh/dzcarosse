@@ -15,6 +15,17 @@ const BRAND = 'DZair Carrosse';
 
 const I18N = {
   fr: {
+    'traffic.totalVisits': "Total des visites",
+    'traffic.visitsWord': "visites",
+    'traffic.online': "En ligne maintenant",
+    'traffic.badge': "en ligne",
+    'traffic.members': "dont {n} avec un compte",
+    'traffic.visitorsToday': "Visites aujourd'hui",
+    'traffic.loginsToday': "Connexions à un compte aujourd'hui",
+    'traffic.peakToday': "Pic d'affluence aujourd'hui",
+    'analytics.visitorsPerDay': "Visites par jour",
+    'analytics.loginsPerDay': "Connexions à un compte par jour",
+    'auth.sessionExpired': "Votre session a expiré. Merci de vous reconnecter.",
     brand: BRAND,
     // Navigation
     'nav.stock': 'Voitures en stock',
@@ -282,6 +293,17 @@ const I18N = {
   },
 
   en: {
+    'traffic.totalVisits': "Total visits",
+    'traffic.visitsWord': "visits",
+    'traffic.online': "Online now",
+    'traffic.badge': "online",
+    'traffic.members': "{n} signed in",
+    'traffic.visitorsToday': "Visits today",
+    'traffic.loginsToday': "Account sign-ins today",
+    'traffic.peakToday': "Peak today",
+    'analytics.visitorsPerDay': "Visits per day",
+    'analytics.loginsPerDay': "Account sign-ins per day",
+    'auth.sessionExpired': "Your session has expired. Please sign in again.",
     brand: BRAND,
     'nav.stock': 'Cars in stock',
     'nav.contact': 'Contact',
@@ -533,6 +555,17 @@ const I18N = {
   },
 
   ar: {
+    'traffic.totalVisits': "إجمالي الزيارات",
+    'traffic.visitsWord': "زيارة",
+    'traffic.online': "متصلون الآن",
+    'traffic.badge': "متصل",
+    'traffic.members': "منهم {n} بحساب",
+    'traffic.visitorsToday': "زيارات اليوم",
+    'traffic.loginsToday': "تسجيلات الدخول بحساب اليوم",
+    'traffic.peakToday': "ذروة اليوم",
+    'analytics.visitorsPerDay': "الزيارات حسب اليوم",
+    'analytics.loginsPerDay': "تسجيلات الدخول بحساب حسب اليوم",
+    'auth.sessionExpired': "انتهت جلستك. يرجى تسجيل الدخول من جديد.",
     brand: BRAND,
     'nav.stock': 'السيارات المتوفرة',
     'nav.contact': 'اتصل بنا',

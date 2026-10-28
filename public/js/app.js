@@ -148,9 +148,78 @@ async function api(path, { method = 'GET', json, form } = {}) {
   const res = await fetch(path, opts);
   let data = {};
   try { data = await res.json(); } catch (e) { /* pas de corps JSON */ }
+  if (res.status === 401 && session && !path.startsWith('/api/auth/login')) {
+    // Le serveur ne reconnaît plus la session (redémarrage, expiration...) : on revient
+    // proprement à la connexion au lieu de laisser un écran « connecté » qui échoue.
+    session = null; trafficCache = null;
+    setTimeout(async () => { await goto('auth'); formMsg.login = t('auth.sessionExpired'); render(); }, 0);
+  }
   if (!res.ok) throw new Error(data.error || `Erreur (${res.status})`);
+  // Connexion / déconnexion : on met à jour tout de suite le compteur « en ligne ».
+  if (/^\/api\/auth\/(login|register|logout)/.test(path)) { setTimeout(pingPresence, 0); setTimeout(pollTraffic, 400); }
   return data;
 }
+
+// ---- Présence en ligne (anonyme) + compteur admin ----
+let trafficCache = null;   // { online, members, guests, peakToday, visitorsToday, loginsToday }
+// Le navigateur garde un identifiant anonyme + l'heure de sa dernière activité, et envoie au
+// serveur « inactif depuis X secondes ». Le serveur décide s'il s'agit d'une nouvelle visite
+// (délai réglé par VISIT_GAP_MINUTES dans .env). Un rafraîchissement ne change rien.
+const VISIT_KEY = 'tomobiledz_vid';
+let memVisit = null;   // repli si le navigateur interdit tout stockage
+function visitInfo() {
+  const now = Date.now();
+  const rand = () => {
+    const bytes = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  };
+  for (const store of [() => localStorage, () => sessionStorage]) {
+    try {
+      const st = store();
+      let id = st.getItem(VISIT_KEY);
+      if (!id || !/^[0-9a-f]{32}$/.test(id)) { id = rand(); st.setItem(VISIT_KEY, id); st.removeItem(VISIT_KEY + '_t'); }
+      const last = Number(st.getItem(VISIT_KEY + '_t') || 0);
+      st.setItem(VISIT_KEY + '_t', String(now));
+      return { id, idle: last ? Math.max(0, Math.round((now - last) / 1000)) : null };
+    } catch (e) { /* stockage indisponible : on essaie le suivant */ }
+  }
+  if (!memVisit) memVisit = { id: rand(), t: 0 };
+  const idle = memVisit.t ? Math.round((now - memVisit.t) / 1000) : null;
+  memVisit.t = now;
+  return { id: memVisit.id, idle };
+}
+function pingPresence() {
+  if (document.hidden) return;
+  const v = visitInfo();
+  if (!v.id) return;
+  const headers = { 'X-Visitor': v.id };
+  if (v.idle !== null) headers['X-Idle'] = String(v.idle);
+  fetch('/api/presence', { method: 'POST', credentials: 'include', keepalive: true, headers }).catch(() => {});
+}
+function trafficHtml() {
+  const x = trafficCache;
+  return x ? { n: x.online, sub: t('traffic.members', { n: x.members }) } : { n: '–', sub: '' };
+}
+function paintTraffic() {
+  const x = trafficCache; if (!x) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const nf = n => Number(n).toLocaleString(numberLocale());
+  set('visitsN', nf(x.totalVisits)); set('tfTotal', nf(x.totalVisits));
+  set('onlineN', x.online);
+  if (x.members === undefined) return;   // compteurs détaillés : admin uniquement
+  set('tfOnline', x.online); set('tfMembers', t('traffic.members', { n: x.members }));
+  set('tfVisitors', nf(x.visitorsToday)); set('tfLogins', x.loginsToday); set('tfPeak', x.peakToday);
+}
+async function pollTraffic() {
+  if (!session || document.hidden) return;
+  // Admin : tableau de bord complet. Autres comptes : seulement « en ligne » + total des visites.
+  const url = session.role === 'admin' ? '/api/admin/traffic' : '/api/presence/public';
+  try { trafficCache = await api(url); paintTraffic(); } catch (e) { /* silencieux */ }
+}
+setInterval(pingPresence, 60 * 1000);
+setInterval(pollTraffic, 30 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { pingPresence(); pollTraffic(); } });
 
 function carQuery() {
   const p = new URLSearchParams();
@@ -186,6 +255,7 @@ function fmtBytes(n) {
 }
 
 async function loadForView(v) {
+  if (v === 'admin' && session && session.role === 'admin') { try { trafficCache = await api('/api/admin/traffic'); } catch (e) { /* ignoré */ } }
   if (v === 'home') { await loadWilayas(); await loadCars(); }
   else if (v === 'dealer-stock') await loadDealerCars();
   else if (v === 'dealer-requests') await loadRequests();
@@ -220,6 +290,11 @@ function renderLangSwitch() {
   </div>`;
 }
 
+function trafficBadges() {
+  return `<span class="online-badge" title="${esc(t('traffic.online'))}"><span class="live-dot"></span><b id="onlineN">${trafficHtml().n}</b> ${t('traffic.badge')}</span>
+      <span class="online-badge visits" title="${esc(t('traffic.totalVisits'))}">👁 <b id="visitsN">${trafficCache ? Number(trafficCache.totalVisits).toLocaleString(numberLocale()) : '–'}</b> ${t('traffic.visitsWord')}</span>`;
+}
+
 function renderHeader() {
   const navHome = `<button class="nav-btn ${view === 'home' ? 'active' : ''}" data-action="go" data-view="home">${t('nav.stock')}</button>`;
   // Contact : accessible à tout le monde, connecté ou non.
@@ -233,18 +308,21 @@ function renderHeader() {
     userBox = `<button class="nav-cta" data-action="go" data-view="auth">${t('nav.login')}</button>`;
   } else if (session.role === 'user') {
     roleNav = `
+      ${trafficBadges()}
       <button class="nav-btn ${view === 'user-sell' ? 'active' : ''}" data-action="go" data-view="user-sell">${t('nav.sell')}</button>
       <button class="nav-btn ${view === 'user-listings' ? 'active' : ''}" data-action="go" data-view="user-listings">${t('nav.myListings')}</button>
       <button class="nav-btn ${view === 'profile' ? 'active' : ''}" data-action="go" data-view="profile">${t('nav.myProfile')}</button>`;
     userBox = `<div class="nav-user"><div><span class="nav-user-name">${esc(session.name)}</span><span class="nav-user-role">${t('role.user')}</span></div><button class="logout-btn" data-action="logout">${t('nav.logout')}</button></div>`;
   } else if (session.role === 'dealer') {
     roleNav = `
+      ${trafficBadges()}
       <button class="nav-btn ${view === 'dealer-stock' ? 'active' : ''}" data-action="go" data-view="dealer-stock">${t('nav.dealerStock')}</button>
       <button class="nav-btn ${view === 'dealer-requests' ? 'active' : ''}" data-action="go" data-view="dealer-requests">${t('nav.dealerRequests')}</button>
       <button class="nav-btn ${view === 'profile' ? 'active' : ''}" data-action="go" data-view="profile">${t('nav.myProfile')}</button>`;
     userBox = `<div class="nav-user"><div><span class="nav-user-name">${esc(session.name)}</span><span class="nav-user-role">${t('role.dealer')}</span></div><button class="logout-btn" data-action="logout">${t('nav.logout')}</button></div>`;
   } else if (session.role === 'admin') {
     roleNav = `
+      ${trafficBadges()}
       <button class="nav-btn ${view === 'admin' ? 'active' : ''}" data-action="go" data-view="admin">${t('nav.admin')}</button>
       <button class="nav-btn ${view === 'profile' ? 'active' : ''}" data-action="go" data-view="profile">${t('nav.myProfile')}</button>`;
     userBox = `<div class="nav-user"><div><span class="nav-user-name">${esc(session.name)}</span><span class="nav-user-role">${t('role.admin')}</span></div><button class="logout-btn" data-action="logout">${t('nav.logout')}</button></div>`;
@@ -666,12 +744,21 @@ function renderAnalyticsPanel() {
       </span>
     </div>
     <div class="stat-row">
+      <div class="stat live"><div class="n"><span class="live-dot"></span><span id="tfOnline">${trafficCache ? trafficCache.online : '–'}</span></div><div class="l">${t('traffic.online')} <small id="tfMembers">${trafficCache ? t('traffic.members', { n: trafficCache.members }) : ''}</small></div></div>
+      <div class="stat total"><div class="n" id="tfTotal">${trafficCache ? Number(trafficCache.totalVisits).toLocaleString(numberLocale()) : '–'}</div><div class="l">${t('traffic.totalVisits')}</div></div>
+      <div class="stat"><div class="n" id="tfVisitors">${trafficCache ? trafficCache.visitorsToday : '–'}</div><div class="l">${t('traffic.visitorsToday')}</div></div>
+      <div class="stat"><div class="n" id="tfLogins">${trafficCache ? trafficCache.loginsToday : '–'}</div><div class="l">${t('traffic.loginsToday')}</div></div>
+      <div class="stat"><div class="n" id="tfPeak">${trafficCache ? trafficCache.peakToday : '–'}</div><div class="l">${t('traffic.peakToday')}</div></div>
+    </div>
+    <div class="stat-row">
       <div class="stat"><div class="n">${sr.total}</div><div class="l">${t('analytics.searchesTotal')}</div></div>
       <div class="stat"><div class="n">${sr.noResult} <small style="font-size:14px">(${pctNone}%)</small></div><div class="l">${t('analytics.noResult')}</div></div>
       <div class="stat"><div class="n">${sr.unmatched}</div><div class="l">${t('analytics.unmatched')}</div></div>
     </div>
     <div class="an-grid">
       <div class="an-card"><h4>${t('analytics.searchesByBrand')}</h4>${hbars(brandItems)}</div>
+      <div class="an-card"><h4>${t('analytics.visitorsPerDay')}</h4>${barsSvg(a.visitorsPerDay, a.labels, '#14684A')}</div>
+      <div class="an-card"><h4>${t('analytics.loginsPerDay')}</h4>${barsSvg(a.loginsPerDay, a.labels, '#D7282F')}</div>
       <div class="an-card"><h4>${t('analytics.searchesPerDay')}</h4>${barsSvg(sr.perDay, a.labels, '#E2531F')}</div>
       <div class="an-card"><h4>${t('analytics.signupsPerDay')}</h4>${barsSvg(a.signupsPerDay, a.labels, '#1C3661')}</div>
       <div class="an-card"><h4>${t('analytics.stockByBrand')}</h4>${hbars(a.stockByBrand)}</div>
@@ -1177,14 +1264,14 @@ document.addEventListener('click', async (e) => {
   else if (action === 'toggle-menu') { document.getElementById('navLinks').classList.toggle('open'); }
   else if (action === 'logout') {
     try { await api('/api/auth/logout', { method: 'POST' }); } catch (e) {}
-    session = null; await goto('home');
+    session = null; trafficCache = null; await goto('home');
   }
   else if (action === 'delete-my-account') {
     const pwd = (document.getElementById('delPwd') || {}).value || '';
     if (!pwd || !confirm(t('profile.deleteConfirm'))) return;
     try {
       await api('/api/auth/me', { method: 'DELETE', json: { password: pwd } });
-      session = null; await goto('home');
+      session = null; trafficCache = null; await goto('home');
     } catch (err) { formMsg.profile = err.message; render(); }
   }
   else if (action === 'auth-tab') { authTab = t2.dataset.tab; formMsg.login = ''; formMsg.register = ''; render(); }
@@ -1406,6 +1493,8 @@ async function init() {
     const r = await api('/api/auth/me');
     session = r.user;
   } catch (e) { session = null; }
+  pingPresence();
+  if (session) pollTraffic();
   await goto(session ? (session.role === 'admin' ? 'admin' : session.role === 'dealer' ? 'dealer-stock' : 'home') : 'home');
 }
 init();

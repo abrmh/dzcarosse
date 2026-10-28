@@ -9,6 +9,7 @@ const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const { sanitizeInput, normalizeBody } = require('./middleware/sanitize');
 const { translate, detectLangMiddleware } = require('./lib/i18n-server');
@@ -127,6 +128,7 @@ app.use(hpp());
 //    un flot de trafic réseau massif à lui seul.
 // ---------------------------------------------------------------------
 const apiLimiter = rateLimit({
+  skip: (req) => req.originalUrl.startsWith('/api/presence'),   // limiteur dédié plus bas
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: Number(process.env.RATE_LIMIT_MAX || 300), // 300 requêtes / 15 min / IP
   standardHeaders: true,
@@ -179,15 +181,24 @@ app.post('/api/messages', contactLimiter);
 //    voir README pour le passage en cluster/multi-instance.
 // ---------------------------------------------------------------------
 // Secret de session : jamais de valeur connue par défaut. S'il manque (ou si c'est
-// l'exemple de .env.example), on en génère un aléatoire à chaque démarrage — les
-// connexions sont alors perdues au redémarrage, ce qui rend le problème visible.
+// l'exemple de .env.example), on en génère un aléatoire UNE fois et on le garde dans
+// le dossier de données : il reste identique après un redémarrage et entre workers,
+// donc les connexions ne sont pas perdues. Un secret personnalisé est toujours respecté.
 const PLACEHOLDER_SECRETS = ['change-this-to-a-long-random-string', 'change-this-secret-in-production'];
+function persistedSecret() {
+  const file = path.join(require('./lib/paths').DATA_DIR, '.session-secret');
+  try { const s = fs.readFileSync(file, 'utf8').trim(); if (s.length >= 32) return s; } catch (e) { /* à créer */ }
+  const s = crypto.randomBytes(32).toString('hex');
+  try { fs.writeFileSync(file, s, { mode: 0o600 }); } catch (e) { /* dossier non inscriptible : secret en mémoire */ }
+  return s;
+}
 const envSecret = process.env.SESSION_SECRET;
-const sessionSecret = (envSecret && envSecret.length >= 16 && !PLACEHOLDER_SECRETS.includes(envSecret))
-  ? envSecret
-  : crypto.randomBytes(32).toString('hex');
-if (sessionSecret !== envSecret) {
-  console.warn('⚠️  SESSION_SECRET absent ou trop faible : un secret temporaire a été généré (les sessions seront perdues au redémarrage). Définissez SESSION_SECRET dans .env.');
+const hasCustomSecret = !!envSecret && !PLACEHOLDER_SECRETS.includes(envSecret);
+const sessionSecret = hasCustomSecret ? envSecret : persistedSecret();
+if (!hasCustomSecret) {
+  console.warn('⚠️  SESSION_SECRET non défini : un secret aléatoire est utilisé et conservé dans data/.session-secret. Définissez SESSION_SECRET dans .env pour le maîtriser.');
+} else if (envSecret.length < 16) {
+  console.warn('⚠️  SESSION_SECRET est très court : utilisez au moins 32 caractères aléatoires.');
 }
 
 app.use(session({
@@ -244,6 +255,23 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // API
+// Signal de présence (« je suis en ligne »), envoyé toutes les minutes par chaque onglet ouvert.
+// Limiteur à part et large : de nombreux visiteurs peuvent partager la même IP (réseau
+// d'entreprise, téléphonie mobile) et ne doivent pas épuiser le quota de l'API.
+const presenceLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3000, standardHeaders: true, legacyHeaders: false });
+app.post('/api/presence', presenceLimiter, (req, res) => {
+  const ok = require('./lib/presence').ping(req.get('x-visitor'), !!(req.session && req.session.userId), (/^\d{1,9}$/.test(req.get('x-idle') || '') ? Number(req.get('x-idle')) : null), req.ip);
+  res.status(ok ? 204 : 400).end();
+});
+
+// Compteurs publics (en ligne + total des visites) : visibles par tout compte connecté
+// (client, concessionnaire, admin). Aucune donnée sensible : seulement deux nombres.
+app.get('/api/presence/public', presenceLimiter, (req, res) => {
+  if (!(req.session && req.session.userId)) return res.status(401).json({ error: 'Non connecté' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ online: require('./lib/presence').snapshot().online, totalVisits: require('./lib/analytics').todayTraffic().totalVisits });
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/cars', require('./routes/cars'));
