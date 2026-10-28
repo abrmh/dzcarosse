@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.yourdomain.tomobiledz",
+    "package_name": "com.yourdomain.dzaircarrosse",
     "sha256_cert_fingerprints": ["REPLACE:WITH:YOUR:SHA256:FINGERPRINT"]
   }
 }]

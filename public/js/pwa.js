@@ -13,7 +13,7 @@
    3) Mode d'emploi manuel, adapté au navigateur détecté, quand aucune
       invite native n'est disponible.
 
-   Expose window.TomobilePWA pour que l'interface (public/js/app.js) sache
+   Expose window.DzairCarrossePWA pour que l'interface (public/js/app.js) sache
    s'il faut afficher le bouton et puisse déclencher l'installation.
    ========================================================= */
 
@@ -25,8 +25,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-window.TomobilePWA = (function () {
-  const DISMISS_KEY = 'tomobiledz_install_dismissed';
+window.DzairCarrossePWA = (function () {
+  const DISMISS_KEY = 'dzair-carrosse_install_dismissed';
   let deferredPrompt = null;
 
   function tr(key, fallback) {

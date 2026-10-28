@@ -2,6 +2,7 @@
   "name": "DZair Carrosse",
   "short_name": "DZair Carrosse",
   "description": "Achat et vente de voitures — concessionnaires et particuliers.",
+  "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

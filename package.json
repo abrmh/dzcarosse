@@ -1,5 +1,5 @@
 {
-  "name": "tomobiledz-backend",
+  "name": "dzair-carrosse-backend",
   "version": "1.0.0",
   "description": "Backend Node.js pour DZair Carrosse — marketplace de voitures (particuliers / concessionnaires / admin)",
   "main": "server.js",
@@ -8,7 +8,9 @@
     "start:cluster": "node cluster.js",
     "dev": "node --watch server.js",
     "migrate:mysql": "node scripts/migrate-json-to-mysql.js",
-    "build": "node build/build-frontend.js"
+    "build": "node build/build-frontend.js",
+    "loadtest": "node loadtest/loadtest.js",
+    "check:twa": "node scripts/check-assetlinks.js"
   },
   "engines": {
     "node": ">=18"

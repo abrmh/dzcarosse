@@ -165,7 +165,7 @@ let trafficCache = null;   // { online, members, guests, peakToday, visitorsToda
 // Le navigateur garde un identifiant anonyme + l'heure de sa dernière activité, et envoie au
 // serveur « inactif depuis X secondes ». Le serveur décide s'il s'agit d'une nouvelle visite
 // (délai réglé par VISIT_GAP_MINUTES dans .env). Un rafraîchissement ne change rien.
-const VISIT_KEY = 'tomobiledz_vid';
+const VISIT_KEY = 'dzair-carrosse_vid';
 let memVisit = null;   // repli si le navigateur interdit tout stockage
 function visitInfo() {
   const now = Date.now();
@@ -1333,7 +1333,7 @@ document.addEventListener('click', async (e) => {
     }
   }
   else if (action === 'install-app') {
-    if (window.TomobilePWA) await window.TomobilePWA.promptInstall();
+    if (window.DzairCarrossePWA) await window.DzairCarrossePWA.promptInstall();
   }
   else if (action === 'contact-reset') { contactSent = false; formMsg.contact = ''; render(); }
   else if (action === 'toggle-msg-read') {

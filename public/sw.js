@@ -12,7 +12,7 @@
    (l'ancien cache est supprimé dans l'évènement "activate" ci-dessous).
    ========================================================= */
 const CACHE_VERSION = 'v23';
-const CACHE_NAME = `tomobiledz-shell-${CACHE_VERSION}`;
+const CACHE_NAME = `dzair-carrosse-shell-${CACHE_VERSION}`;
 
 const APP_SHELL = [
   '/',

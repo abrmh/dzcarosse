@@ -17,7 +17,7 @@
 
 ## 1quater. Ne rien perdre lors des mises à jour
 - **Comptes, annonces, messages** : dans MySQL → jamais touchés par un redéploiement.
-- **Photos** : fichiers sur disque → définir `STORAGE_DIR` vers un dossier HORS de l'app (ex. `/home/u123456789/tomobiledz-storage`, créé tout seul au démarrage). Le chemin de ton dossier personnel s'affiche dans le Gestionnaire de fichiers / en SSH avec `pwd`.
+- **Photos** : fichiers sur disque → définir `STORAGE_DIR` vers un dossier HORS de l'app (ex. `/home/u123456789/dzair-carrosse-storage`, créé tout seul au démarrage). Le chemin de ton dossier personnel s'affiche dans le Gestionnaire de fichiers / en SSH avec `pwd`.
 - Ne jamais mettre `.env`, `uploads/` ni `data/` dans Git (déjà dans `.gitignore`).
 - Avant chaque grosse mise à jour : export phpMyAdmin + copie de `STORAGE_DIR`.
 
@@ -33,7 +33,11 @@ Les comptes **particuliers** sans connexion depuis 2 mois sont supprimés automa
 - Vérifiez : https://VOTREDOMAINE/privacy.html
 
 ## 3. Application Android (TWA)
-1. https://www.pwabuilder.com → votre URL → Android → package ex. `com.votredomaine.tomobiledz` → générer (.aab + keystore : **gardez-les**).
-2. Copiez le SHA-256 du certificat dans `well-known/assetlinks.json` (+ le bon `package_name`), redéployez.
-3. Vérifiez : https://VOTREDOMAINE/.well-known/assetlinks.json
+1. https://www.pwabuilder.com → votre URL → Android → package ex. `com.votredomaine.dzaircarrosse` → générer (.aab + keystore : **gardez-les**).
+   L'URL de départ de l'APK doit être exactement `https://dzair-carosse.pro` (pas d'ancienne URL ni de sous-domaine temporaire).
+2. Copiez le SHA-256 du certificat dans `well-known/assetlinks.json` (+ le bon `package_name`, identique à celui de l'APK), redéployez.
+   - APK installé hors Play Store : empreinte de VOTRE keystore.
+   - Via Google Play (Play App Signing) : empreinte de Play Console > Configuration > Signature de l'app. Vous pouvez mettre les deux dans le tableau.
+3. Vérifiez : https://dzair-carosse.pro/.well-known/assetlinks.json (HTTPS, aucune redirection http→https ni www→nu), puis lancez `npm run check:twa`.
+4. Désinstallez l'ancien APK et réinstallez-le (Android met le résultat en cache) : la barre d'URL ne doit plus apparaître.
 4. Play Console : upload .aab, fiche, politique de confidentialité = https://VOTREDOMAINE/privacy.html, URL de suppression de compte = https://VOTREDOMAINE/delete-account.html, Data safety, classification.

@@ -44,7 +44,8 @@ if (isProd) assertProductionSafety();
 //    limiting utilisent la vraie IP du client (en-tête X-Forwarded-For)
 //    plutôt que l'IP du proxy.
 // ---------------------------------------------------------------------
-app.set('trust proxy', 1);
+// Nombre de proxys devant l'app : 1 = hébergeur seul ; 2 = Cloudflare + hébergeur (voir .env.example).
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS) || 1);
 
 // Journal des IP + tentatives suspectes (visible par l'admin uniquement).
 app.use(require('./lib/security').middleware);
@@ -202,7 +203,7 @@ if (!hasCustomSecret) {
 }
 
 app.use(session({
-  name: 'tomobiledz.sid',
+  name: 'dzair-carrosse.sid',
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
@@ -258,7 +259,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // Signal de présence (« je suis en ligne »), envoyé toutes les minutes par chaque onglet ouvert.
 // Limiteur à part et large : de nombreux visiteurs peuvent partager la même IP (réseau
 // d'entreprise, téléphonie mobile) et ne doivent pas épuiser le quota de l'API.
-const presenceLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3000, standardHeaders: true, legacyHeaders: false });
+const presenceLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: Number(process.env.PRESENCE_RATE_LIMIT_MAX || 3000), standardHeaders: true, legacyHeaders: false });
 app.post('/api/presence', presenceLimiter, (req, res) => {
   const ok = require('./lib/presence').ping(req.get('x-visitor'), !!(req.session && req.session.userId), (/^\d{1,9}$/.test(req.get('x-idle') || '') ? Number(req.get('x-idle')) : null), req.ip);
   res.status(ok ? 204 : 400).end();
