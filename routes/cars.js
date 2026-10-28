@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 const { carUpload, deletePhotoFile, CAR_PHOTO_FIELDS, carPhotoSlots, setCarPhotos, deleteCarPhotos, uploadedCarFiles, discardUploaded } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
 const analytics = require('../lib/analytics');
+const { checkListing } = require('../lib/validate');
 const { dealerWilaya, isValidWilaya } = require('../lib/wilayas');
 
 const router = express.Router();
@@ -112,6 +113,10 @@ router.post('/', requireAuth('dealer'), carUpload, (req, res) => {
     discardUploaded(req);
     return res.status(400).json({ error: translate(req.lang, 'car.requiredFields') });
   }
+  if (!checkListing(req.body)) {
+    discardUploaded(req);
+    return res.status(400).json({ error: translate(req.lang, 'generic.invalidValues') });
+  }
 
   const car = {
     id: store.nextId('cars'),
@@ -145,6 +150,10 @@ router.put('/:id', requireAuth('dealer'), carUpload, (req, res) => {
   if (car.dealerId !== req.session.userId) {
     discardUploaded(req);
     return res.status(403).json({ error: translate(req.lang, 'car.otherDealer') });
+  }
+  if (!checkListing(req.body)) {
+    discardUploaded(req);
+    return res.status(400).json({ error: translate(req.lang, 'generic.invalidValues') });
   }
 
   const { brand, model, year, km, price, fuel, gearbox, color, city, description, contactPhone, contactName } = req.body;

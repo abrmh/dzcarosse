@@ -2,7 +2,7 @@ const express = require('express');
 const { isValidWilaya, wilayaName, dealerWilaya } = require('../lib/wilayas');
 const bcrypt = require('bcryptjs');
 const store = require('../lib/store');
-const { requireAuth, publicUser } = require('../middleware/auth');
+const { requireAuth, publicUser, sessionRevoked } = require('../middleware/auth');
 const { translate } = require('../lib/i18n-server');
 const { deletePhotoFile, deleteCarPhotos } = require('../lib/upload');
 
@@ -74,6 +74,7 @@ router.post('/register', async (req, res) => {
     if (err) return res.status(500).json({ error: translate(req.lang, 'generic.serverError') });
     req.session.userId = user.id;
     req.session.role = user.role;
+    req.session.loginAt = Date.now();
     require('../lib/analytics').recordLogin();
     res.status(201).json({ user: publicUser(user) });
   });
@@ -101,6 +102,7 @@ router.post('/login', async (req, res) => {
     if (err) return res.status(500).json({ error: translate(req.lang, 'generic.serverError') });
     req.session.userId = user.id;
     req.session.role = user.role;
+    req.session.loginAt = Date.now();
     require('../lib/analytics').recordLogin();
     res.json({ user: publicUser(user) });
   });
@@ -115,6 +117,7 @@ router.get('/me', (req, res) => {
   const db = store.load();
   const user = db.users.find(u => u.id === req.session.userId);
   if (!user) return res.json({ user: null });
+  if (sessionRevoked(req, user)) return req.session.destroy(() => res.json({ user: null }));
   // Ouverture de l'app avec une session valide = activité (au plus 1 écriture/jour/compte).
   if (!user.lastActiveAt || Date.now() - user.lastActiveAt > 24 * 60 * 60 * 1000) {
     user.lastActiveAt = Date.now();
@@ -141,6 +144,9 @@ router.put('/me', requireAuth(), async (req, res) => {
       return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
     }
     user.passwordHash = await bcrypt.hash(newPassword, 10);
+    // Déconnecte toutes les AUTRES sessions de ce compte ; celle-ci reste ouverte.
+    user.sessionsValidFrom = Date.now();
+    req.session.loginAt = user.sessionsValidFrom;
   }
   if (email !== undefined) {
     const trimmedEmail = email.trim();

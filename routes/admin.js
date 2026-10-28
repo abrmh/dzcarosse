@@ -107,6 +107,7 @@ router.put('/accounts/:id', (req, res) => {
   if (password) {
     if (password.length < 8 || password.length > 128) return res.status(400).json({ error: translate(req.lang, 'auth.passwordLength') });
     acc.passwordHash = bcrypt.hashSync(password, 10);
+    acc.sessionsValidFrom = Date.now(); // déconnecte ce compte partout
   }
 
   store.persist();

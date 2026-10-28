@@ -3,6 +3,7 @@ const store = require('../lib/store');
 const { requireAuth } = require('../middleware/auth');
 const { uploadSingle, deletePhotoFile } = require('../lib/upload');
 const { translate } = require('../lib/i18n-server');
+const { checkListing } = require('../lib/validate');
 
 const router = express.Router();
 const MAX_REQUESTS_PER_USER = 20;
@@ -47,6 +48,9 @@ router.post('/', requireAuth('user'), uploadSingle('photo'), (req, res) => {
   if (!brand || !model || !year || !km || !price || !city || !phone) {
     return res.status(400).json({ error: translate(req.lang, 'request.requiredFields') });
   }
+  if (!checkListing(req.body)) {
+    return res.status(400).json({ error: translate(req.lang, 'generic.invalidValues') });
+  }
 
   const r = {
     id: store.nextId('requests'),
@@ -74,6 +78,9 @@ router.put('/:id', requireAuth('user'), uploadSingle('photo'), (req, res) => {
   if (!r) return res.status(404).json({ error: translate(req.lang, 'request.notFound') });
   if (r.userId !== req.session.userId) {
     return res.status(403).json({ error: translate(req.lang, 'request.otherUser') });
+  }
+  if (!checkListing(req.body)) {
+    return res.status(400).json({ error: translate(req.lang, 'generic.invalidValues') });
   }
 
   const { brand, model, year, km, price, fuel, city, phone, description } = req.body;
