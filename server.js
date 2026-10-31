@@ -249,6 +249,16 @@ app.use('/.well-known', express.static(path.join(__dirname, 'well-known'), {
   setHeaders: (res) => res.setHeader('Content-Type', 'application/json')
 }));
 
+// Pages légales publiques (exigées par Google Play) : politique de confidentialité et
+// suppression de compte. Fichiers dans legal/, hors du dossier public/ régénéré par le build.
+const LEGAL_DIR = path.join(__dirname, 'legal');
+const legalPage = file => (req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.sendFile(path.join(LEGAL_DIR, file));
+};
+app.get(['/confidentialite', '/privacy'], legalPage('confidentialite.html'));
+app.get(['/suppression-compte', '/delete-account'], legalPage('suppression-compte.html'));
+
 // Frontend statique
 app.use(express.static(path.join(__dirname, 'public'), {
   dotfiles: 'deny',
