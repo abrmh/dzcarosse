@@ -11,7 +11,7 @@
    ce qui force le renouvellement de la coquille chez les utilisateurs
    (l'ancien cache est supprimé dans l'évènement "activate" ci-dessous).
    ========================================================= */
-const CACHE_VERSION = 'v24';
+const CACHE_VERSION = 'v25';
 const CACHE_NAME = `dzair-carrosse-shell-${CACHE_VERSION}`;
 
 const APP_SHELL = [

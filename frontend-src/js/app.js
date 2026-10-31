@@ -212,10 +212,9 @@ function paintTraffic() {
   set('tfVisitors', nf(x.visitorsToday)); set('tfLogins', x.loginsToday); set('tfPeak', x.peakToday);
 }
 async function pollTraffic() {
-  if (!session || document.hidden) return;
-  // Admin : tableau de bord complet. Autres comptes : seulement « en ligne » + total des visites.
-  const url = session.role === 'admin' ? '/api/admin/traffic' : '/api/presence/public';
-  try { trafficCache = await api(url); paintTraffic(); } catch (e) { /* silencieux */ }
+  // Compteurs « en ligne » / visites : réservés à l'administrateur.
+  if (!session || session.role !== 'admin' || document.hidden) return;
+  try { trafficCache = await api('/api/admin/traffic'); paintTraffic(); } catch (e) { /* silencieux */ }
 }
 setInterval(pingPresence, 60 * 1000);
 setInterval(pollTraffic, 30 * 1000);
@@ -308,14 +307,12 @@ function renderHeader() {
     userBox = `<button class="nav-cta" data-action="go" data-view="auth">${t('nav.login')}</button>`;
   } else if (session.role === 'user') {
     roleNav = `
-      ${trafficBadges()}
       <button class="nav-btn ${view === 'user-sell' ? 'active' : ''}" data-action="go" data-view="user-sell">${t('nav.sell')}</button>
       <button class="nav-btn ${view === 'user-listings' ? 'active' : ''}" data-action="go" data-view="user-listings">${t('nav.myListings')}</button>
       <button class="nav-btn ${view === 'profile' ? 'active' : ''}" data-action="go" data-view="profile">${t('nav.myProfile')}</button>`;
     userBox = `<div class="nav-user"><div><span class="nav-user-name">${esc(session.name)}</span><span class="nav-user-role">${t('role.user')}</span></div><button class="logout-btn" data-action="logout">${t('nav.logout')}</button></div>`;
   } else if (session.role === 'dealer') {
     roleNav = `
-      ${trafficBadges()}
       <button class="nav-btn ${view === 'dealer-stock' ? 'active' : ''}" data-action="go" data-view="dealer-stock">${t('nav.dealerStock')}</button>
       <button class="nav-btn ${view === 'dealer-requests' ? 'active' : ''}" data-action="go" data-view="dealer-requests">${t('nav.dealerRequests')}</button>
       <button class="nav-btn ${view === 'profile' ? 'active' : ''}" data-action="go" data-view="profile">${t('nav.myProfile')}</button>`;

@@ -275,13 +275,7 @@ app.post('/api/presence', presenceLimiter, (req, res) => {
   res.status(ok ? 204 : 400).end();
 });
 
-// Compteurs publics (en ligne + total des visites) : visibles par tout compte connecté
-// (client, concessionnaire, admin). Aucune donnée sensible : seulement deux nombres.
-app.get('/api/presence/public', presenceLimiter, (req, res) => {
-  if (!(req.session && req.session.userId)) return res.status(401).json({ error: 'Non connecté' });
-  res.set('Cache-Control', 'no-store');
-  res.json({ online: require('./lib/presence').snapshot().online, totalVisits: require('./lib/analytics').todayTraffic().totalVisits });
-});
+// Les compteurs (en ligne, visites) ne sont servis qu'à l'administrateur : /api/admin/traffic.
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
