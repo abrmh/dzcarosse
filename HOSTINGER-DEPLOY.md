@@ -6,7 +6,8 @@
 3. Start command : `npm start` — fichier d'entrée : `server.js`.
 4. Variables d'environnement (voir `.env.example`) : `NODE_ENV=production`, `SESSION_SECRET` (long, aléatoire), `ADMIN_PASSWORD`, `SESSION_STORE=file`.
 5. Domaine + SSL (HTTPS) activés. **Sans cluster** (`npm start`, pas `start:cluster`).
-6. Ne pas écraser `uploads/` (et `data/` si vous restez sans MySQL) lors d'un redéploiement.
+6. Sur le serveur, installez sans les outils de build : `npm ci --omit=dev` (le build du frontend se fait sur votre PC, voir `PROTECT-FRONTEND.md`).
+7. Ne pas écraser `uploads/` (et `data/` si vous restez sans MySQL) lors d'un redéploiement.
 
 ## 1bis. Base MySQL (recommandé)
 1. hPanel → **Bases de données → Gestion** : créer une base + un utilisateur (noter nom, utilisateur, mot de passe).
